@@ -181,7 +181,7 @@ Plan-my-study/
 │   └── ollama_scheduler.py  # AI-powered plan generation
 ├── frontend/
 │   ├── app.py               # Main Streamlit application
-│   ├── pages/               # Page modules
+│   ├── modules/               # front end modules
 │   │   ├── setup_profile.py
 │   │   ├── weekly_plan.py
 │   │   ├── progress_report.py
