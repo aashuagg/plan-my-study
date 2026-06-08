@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pydantic
+pydantic-settings
+python-dotenv
+langchain
+langchain-ollama
+langchain-anthropic
+reportlab
+pandas
+openpyxl
+python-multipart
+typer
+rich
+streamlit

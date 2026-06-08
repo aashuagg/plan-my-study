@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: study_planner_db
+    environment:
+      POSTGRES_USER: studyplanner
+      POSTGRES_PASSWORD: studyplanner123
+      POSTGRES_DB: study_planner
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
