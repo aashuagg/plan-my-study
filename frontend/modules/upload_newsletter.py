@@ -10,17 +10,11 @@ from datetime import datetime
 # Add parent directory to path to import backend
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-<<<<<<< HEAD
 from backend.crud import create_newsletter, add_curriculum_items, get_user
 from backend.schemas import NewsletterUpload, CurriculumItemSchema
 from backend.newsletter_parser import NewsletterParser
 from backend.models import Newsletter, CurriculumItem, LearningHistory
 from backend.sm2 import SM2Algorithm
-=======
-from backend.crud import create_newsletter, add_curriculum_items
-from backend.schemas import NewsletterUpload, CurriculumItemSchema
-from backend.newsletter_parser import NewsletterParser
->>>>>>> 39418500c2accf02093099e7501f37cb9c6a6009
 
 
 def show_upload_newsletter_page(db):
@@ -29,7 +23,6 @@ def show_upload_newsletter_page(db):
     Args:
         db: Database session
     """
-<<<<<<< HEAD
     st.title("📤 Upload Monthly Newsletter")
     
     tab1, tab2 = st.tabs(["Upload Newsletter", "Add Diary Entry"])
@@ -55,28 +48,6 @@ def show_upload_newsletter_page(db):
             
     with tab2:
         _show_diary_entry_tab(db)
-=======
-    st.write("DEBUG: Upload newsletter page called")  # Debug line
-    st.title("📤 Upload Monthly Newsletter")
-    
-    st.markdown("### Upload curriculum CSV/Excel file")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        month = st.selectbox("Month", ["January", "February", "March", "April", "May", "June", 
-                                       "July", "August", "September", "October", "November", "December"])
-        year = st.number_input("Year", min_value=2020, max_value=2030, value=2026)
-    
-    with col2:
-        st.info("**Expected Format:**\n\nCSV with columns:\n- subject\n- topic\n- start_date")
-    
-    # File uploader
-    uploaded_file = st.file_uploader("Choose a CSV or Excel file", type=["csv", "xlsx"])
-    
-    if uploaded_file is not None:
-        _process_uploaded_file(db, uploaded_file, month, year)
->>>>>>> 39418500c2accf02093099e7501f37cb9c6a6009
 
 
 def _process_uploaded_file(db, uploaded_file, month, year):
@@ -165,7 +136,6 @@ def _save_newsletter_to_database(db, temp_path, raw_items, month, year):
             st.error(f"Error processing newsletter: {str(e)}")
             if os.path.exists(temp_path):
                 os.remove(temp_path)
-<<<<<<< HEAD
 
 
 def _show_diary_entry_tab(db):
@@ -299,5 +269,3 @@ def _show_diary_entry_tab(db):
             st.info("No diary entries recorded yet.")
     except Exception as e:
         st.error(f"Error loading recent diary entries: {str(e)}")
-=======
->>>>>>> 39418500c2accf02093099e7501f37cb9c6a6009

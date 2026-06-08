@@ -1,9 +1,5 @@
 from langchain_ollama import ChatOllama
-<<<<<<< HEAD
 from langchain_anthropic import ChatAnthropic
-=======
-#from langchain_anthropic import ChatAnthropic
->>>>>>> 39418500c2accf02093099e7501f37cb9c6a6009
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
