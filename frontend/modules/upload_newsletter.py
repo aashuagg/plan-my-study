@@ -144,6 +144,9 @@ def _show_diary_entry_tab(db):
         st.success(st.session_state.diary_success)
         del st.session_state.diary_success
         
+    if 'diary_form_counter' not in st.session_state:
+        st.session_state.diary_form_counter = 0
+        
     st.markdown("### 📝 Add Diary Entry")
     st.info("Manually log a topic your child studied at school or for homework to add it to their curriculum schedule.")
 
@@ -160,7 +163,7 @@ def _show_diary_entry_tab(db):
         st.warning("No subjects configured in the student profile. Please add subjects to the profile first.")
         return
 
-    with st.form(key="diary_entry_form"):
+    with st.form(key=f"diary_entry_form_{st.session_state.diary_form_counter}"):
         diary_date = st.date_input("Date", value=datetime.today().date())
         diary_subject = st.selectbox("Subject", options=subjects)
         diary_topic = st.text_input("Topic", placeholder="e.g., Chapter 3: Fractions, Reading practice")
@@ -232,6 +235,7 @@ def _show_diary_entry_tab(db):
                     
                     db.commit()
                     st.session_state.diary_success = f"✅ Diary entry saved successfully! Added '{diary_topic}' to {diary_subject} curriculum."
+                    st.session_state.diary_form_counter += 1
                     st.rerun()
                     
             except Exception as e:

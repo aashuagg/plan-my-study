@@ -35,6 +35,7 @@ This is **not** a multi-tenant SaaS product. It is a personal tool with a single
 |---------|--------|
 | Student profile creation (name, grade, board, subjects, schedule) | ✅ Done |
 | Newsletter ingestion via CSV upload | ✅ Done |
+| Manual diary entry for custom/home-study topics | ✅ Done |
 | Curriculum items stored per newsletter with start/end dates | ✅ Done |
 | SM-2 spaced repetition tracking initialised per topic | ✅ Done |
 | AI-generated weekly study plan (6 days) | ✅ Done |

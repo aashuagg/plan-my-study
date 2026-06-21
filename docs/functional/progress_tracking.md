@@ -41,7 +41,7 @@ record_study_session() called for each valid topic:
   - Updates: easiness_factor, interval, repetitions, next_review, last_reviewed
         │
         ▼
-Success count shown; page reruns to reflect updated state
+Success count saved to session state (`save_success`); page reruns and displays the green success message
 ```
 
 ---

@@ -162,7 +162,7 @@ The `subject` column must use the **exact names** that appear in the student's p
 | Raw newsletter text | Normalised subject name |
 |--------------------|------------------------|
 | English / English Language | `LITERACY` |
-| Math / Maths / Mathematics | `NUMERACY` |
+| Math / Maths / Mathematics | `MATHEMATICS` (or `NUMERACY` depending on profile) |
 | Hindi / Hindi Language | `HINDI` |
 | Kannada / Kannada Language | `KANNADA` |
 | EVS / Environmental Studies | `GENERAL AWARENESS` |
@@ -185,6 +185,21 @@ The `subject` column must use the **exact names** that appear in the student's p
    - `repetitions = 0`
    - `next_review = today + 1 day`
 4. These topics immediately become eligible for inclusion in the next weekly plan
+
+---
+
+## Manually Adding Diary Entries
+
+To bypass the CSV upload process for individual or missed topics (e.g., homework or extra school practice), parents can use the **Add Diary Entry** tab on the Upload Newsletter page.
+
+### How it works:
+1. **Inputs**: The parent selects a **Date**, chooses a **Subject** (from the options configured in the student's profile), and enters the **Topic** text.
+2. **Special Newsletter**: These manual entries are automatically grouped under a virtual newsletter with month `"Diary"` and year `0`.
+3. **Database Insertion**:
+   - Saves a new `CurriculumItem` linked to the `"Diary"` newsletter.
+   - Initializes a new `LearningHistory` record for the topic with default SM-2 parameters (`easiness_factor = 2.5`, `interval = 1`, `repetitions = 0`, `next_review = entry_date`) if it is not already tracked.
+4. **Form Reset and Feedback**: On a successful submit, a green success banner is displayed, the page is reloaded, and the form fields are automatically reset and cleaned to accept the next manual entry.
+5. **Recent Entries List**: Displays the last 5 manually added diary entries in a table for reference and verification.
 
 ---
 

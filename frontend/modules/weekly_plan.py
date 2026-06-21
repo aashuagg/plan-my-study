@@ -90,6 +90,10 @@ def _show_plan_generation_form(db, user):
 
 def _show_weekly_plan_content(db, user, weekly_plan):
     """Display the weekly plan with topics and progress tracking"""
+    # Show save-progress success message persisted across rerun
+    if 'save_success' in st.session_state:
+        st.success(st.session_state.pop('save_success'))
+    
     # Parse plan data
     plan_data = weekly_plan.plan_data
     week_start = weekly_plan.week_start_date
@@ -390,7 +394,7 @@ def _save_progress(db):
             errors.append(f"{data['topic']}: {str(e)}")
     
     if saved_count > 0:
-        st.success(f"✅ Saved {saved_count} completed session(s)!")
+        st.session_state['save_success'] = f"✅ Saved {saved_count} completed session(s)!"
         st.rerun()
     else:
         st.warning("No completed topics to save.")

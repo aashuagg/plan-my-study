@@ -186,6 +186,7 @@ ONLY use subjects and topics from the curriculum data provided. DO NOT make up o
 7. Copy topic names EXACTLY as they appear in the curriculum data
 8. The last day of the week follows the SAME rules as every other day.There is no "catch-up" day. If week ends with unscheduled topics, they move to next week.
 9. Provide a clear rationale explaining your scheduling decisions
+10. NEVER prefix a topic name with its subject name. The "topics" field must contain ONLY the topic text, NOT "SUBJECT: Topic". For example, write "Vyanjan (क - श)" NOT "HINDI: Vyanjan (क - श)".
 
 SUBJECT-TOPIC MATCHING RULE:
 Each topic must belong to one of the subjects listed for that day.
