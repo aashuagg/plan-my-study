@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from backend.database import SessionLocal, init_db
-from backend.crud import get_user
+from backend.crud import get_user, get_analytics
 
 # Import page modules
 from modules.setup_profile import show_setup_page
@@ -61,19 +61,7 @@ USER_DATA = {
     "board": user.board
 }
 
-# Analytics mock data (TODO: Replace with real data queries)
-MOCK_ANALYTICS = {
-    "subject_performance": [
-        {"subject": "LITERACY", "avg_quality": 4.2, "total_sessions": 25, "status": "Good ✅"},
-        {"subject": "NUMERACY", "avg_quality": 3.8, "total_sessions": 22, "status": "Good ✅"},
-        {"subject": "HINDI", "avg_quality": 2.9, "total_sessions": 18, "status": "Needs Revision ⚠️"},
-        {"subject": "KANNADA", "avg_quality": 3.5, "total_sessions": 15, "status": "OK 👍"},
-        {"subject": "GENERAL AWARENESS", "avg_quality": 4.5, "total_sessions": 20, "status": "Excellent 🌟"},
-    ],
-    "overdue_count": 428,
-    "study_streak": 5,
-    "this_week_completion": 40  # percentage
-}
+analytics = get_analytics(db, st.session_state.user_id)
 
 # ===================================================================
 # SIDEBAR NAVIGATION
@@ -99,7 +87,7 @@ if page == "📅 This Week's Plan":
 
 elif page == "📊 Progress Report":
     try:
-        show_progress_report_page(USER_DATA, MOCK_ANALYTICS)
+        show_progress_report_page(USER_DATA, analytics)
     except Exception as e:
         st.error(f"Error loading Progress Report: {e}")
         import traceback

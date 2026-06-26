@@ -170,37 +170,36 @@ Fuzzy string matching (e.g., `rapidfuzz`) on topic lookup with a configurable si
 
 ---
 
-## Current State of the Analytics Page
+## Analytics Page
 
-The **Progress Report** page (`progress_report.py`) is scaffolded but does **not** query real data.
+The **Progress Report** page (`progress_report.py`) queries live data via `backend/crud/analytics.py`.
 
-All metrics shown are hardcoded mock values defined in `app.py`:
+### Data Sources
 
-```python
-MOCK_ANALYTICS = {
-    "subject_performance": [
-        {"subject": "LITERACY", "avg_quality": 4.2, "total_sessions": 25, "status": "Good ✅"},
-        {"subject": "NUMERACY", "avg_quality": 3.8, "total_sessions": 22, "status": "Good ✅"},
-        {"subject": "HINDI",    "avg_quality": 2.9, "total_sessions": 18, "status": "Needs Revision ⚠️"},
-        {"subject": "KANNADA",  "avg_quality": 3.5, "total_sessions": 15, "status": "OK 👍"},
-        {"subject": "GENERAL AWARENESS", "avg_quality": 4.5, "total_sessions": 20, "status": "Excellent 🌟"},
-    ],
-    "overdue_count": 428,       # ← hardcoded; real value would come from learning_history
-    "study_streak": 5,          # ← hardcoded
-    "this_week_completion": 40  # ← hardcoded percentage
-}
-```
+| Metric | Query |
+|--------|-------|
+| Study streak (days) | Distinct `session_date` values from `study_sessions`, counted backwards from today |
+| This week completion % | Sessions this week ÷ topics in the latest `weekly_plans` entry |
+| Topics overdue | `learning_history WHERE next_review <= today AND last_reviewed IS NOT NULL` |
+| Subject avg quality | `AVG(quality_rating)` from `study_sessions` joined to `learning_history`, grouped by subject |
+| Total sessions per subject | `COUNT(*)` from same join |
 
-### What the Analytics Page Shows (all mock)
+### Status Thresholds
 
-| Metric | Real Source (when implemented) |
-|--------|-------------------------------|
-| Study streak (days) | `study_sessions` — consecutive days with at least one session |
-| This week completion % | `study_sessions` vs topics in current `weekly_plans` |
-| Topics overdue | `learning_history WHERE next_review < today` |
-| Subject avg quality | `AVG(quality_rating)` from `study_sessions` per subject |
-| Total sessions per subject | `COUNT(*)` from `study_sessions` grouped by subject |
+Status labels on the subject performance bars are derived automatically from `avg_quality`:
 
-### Planned Fix (Phase 2)
+| avg_quality | Status |
+|-------------|--------|
+| ≥ 4.0 | Excellent 🌟 |
+| ≥ 3.5 | Good ✅ |
+| ≥ 3.0 | OK 👍 |
+| < 3.0 | Needs Revision ⚠️ |
 
-Replace `MOCK_ANALYTICS` with real DB queries in a new `backend/crud/analytics.py` module, and pass results to `show_progress_report_page()`.
+### Empty States
+
+- No rated sessions yet → subject performance section shows an info message instead of crashing.
+- No overdue topics → shows a "all caught up" success message.
+
+### Entry Point
+
+`app.py` calls `get_analytics(db, user_id)` (from `backend/crud/analytics.py`) and passes the result dict to `show_progress_report_page()`. No mock data remains in the codebase.

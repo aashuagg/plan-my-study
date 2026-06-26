@@ -90,6 +90,11 @@ def _show_plan_generation_form(db, user):
 
 def _show_weekly_plan_content(db, user, weekly_plan):
     """Display the weekly plan with topics and progress tracking"""
+    # Reset completed_topics state if we are loading a different plan (e.g., new week generated)
+    if st.session_state.get('current_plan_id') != weekly_plan.id:
+        st.session_state.current_plan_id = weekly_plan.id
+        st.session_state.completed_topics = {}
+
     # Show save-progress success message persisted across rerun
     if 'save_success' in st.session_state:
         st.success(st.session_state.pop('save_success'))
@@ -248,6 +253,7 @@ def _show_topics_by_day(weekly_topics):
 def _show_topic_row(topic, day_date):
     """Display a single topic row with checkbox, rating, and notes"""
     topic_id = topic['id']
+    plan_id = st.session_state.get('current_plan_id', 0)
     
     # Initialize state if not exists
     if topic_id not in st.session_state.completed_topics:
@@ -268,7 +274,7 @@ def _show_topic_row(topic, day_date):
         completed = st.checkbox(
             "✓",
             value=st.session_state.completed_topics[topic_id]['completed'],
-            key=f"check_{topic_id}",
+            key=f"check_{plan_id}_{topic_id}",
             label_visibility="collapsed"
         )
         st.session_state.completed_topics[topic_id]['completed'] = completed
@@ -299,7 +305,7 @@ def _show_topic_row(topic, day_date):
                 options=options,
                 index=selected_index,
                 format_func=lambda x: "Select..." if x is None else f"{x} - {['😰', '😟', '😕', '😐', '🙂', '😄'][x]}",
-                key=f"quality_{topic_id}",
+                key=f"quality_{plan_id}_{topic_id}",
                 label_visibility="collapsed"
             )
             st.session_state.completed_topics[topic_id]['quality'] = quality
@@ -312,7 +318,7 @@ def _show_topic_row(topic, day_date):
                 "Notes",
                 value=st.session_state.completed_topics[topic_id]['notes'],
                 placeholder="Optional notes...",
-                key=f"notes_{topic_id}",
+                key=f"notes_{plan_id}_{topic_id}",
                 label_visibility="collapsed"
             )
             st.session_state.completed_topics[topic_id]['notes'] = notes

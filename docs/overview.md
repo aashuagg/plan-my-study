@@ -45,14 +45,14 @@ This is **not** a multi-tenant SaaS product. It is a personal tool with a single
 | Save progress → persists study sessions to DB | ✅ Done |
 | SM-2 parameters updated after each session | ✅ Done |
 | Generate next week's plan | ✅ Done |
-| Progress report page (analytics) | ⚠️ Scaffolded — uses mock data |
+| Progress report page (analytics) | ✅ Done — live DB queries |
 
 ### 🔜 Planned — Next Phase
 
 | Feature | Priority |
 |---------|----------|
 | Automated newsletter parsing (screenshot → OCR → CSV, no manual Claude chat) | High |
-| Real analytics using live DB data (replace mock) | High |
+| Real analytics using live DB data (replace mock) | ✅ Done |
 | Profile edit UI | Medium |
 | `academic_year` field on sessions (UKG → Class 1 transitions) | Medium |
 | Overdue topic drill-down view | Medium |
@@ -144,7 +144,7 @@ This is **not** a multi-tenant SaaS product. It is a personal tool with a single
 |------------|---------|
 | **Single-user** | `user_id = 1` hardcoded in `app.py`. No login, no multi-child support. |
 | **No profile edit** | Once created, the profile cannot be edited through the UI. Must use CLI or DB directly. |
-| **Analytics uses mock data** | The Progress Report page shows hardcoded fake numbers. Real query implementation is pending. |
+| **No rated sessions = no subject chart** | Subject performance only shows subjects that have at least one session with a quality rating. Study-type sessions (first encounter, no rating) are excluded. |
 | **Topic name mismatch** | If an AI-generated topic name differs even slightly from the `curriculum_items` name, the topic will have no `learning_history_id` and the session cannot be saved. |
 | **Manual newsletter process** | Converting a school PDF/newsletter to the required CSV takes 5–6 hours of manual work using Claude chat. |
 | **Ollama plan quality** | Ollama (llama3.2) frequently violates the 2-topic-per-day hard limit and subject-topic matching rules. Claude is significantly more reliable. |
