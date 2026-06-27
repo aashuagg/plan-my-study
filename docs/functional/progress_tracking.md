@@ -112,6 +112,10 @@ The session type is set automatically based on `repetitions` at save time:
 | 0 | `"study"` — first encounter with the topic |
 | > 0 | `"review"` — a spaced repetition review |
 
+> **Bug fixed (Jun 2026):** Study sessions previously skipped SM-2, leaving `next_review` frozen at the initial ingest date. Both session types now run SM-2. 14 affected topics were backfilled.
+
+**Important:** Both session types now run the SM-2 algorithm. Study sessions use the provided quality rating (defaulting to 4 if absent) to update `easiness_factor`, `interval`, `repetitions`, and `next_review` — so the topic advances after the very first encounter.
+
 ---
 
 ## How `next_review` Date Is Calculated
@@ -178,7 +182,6 @@ The **Progress Report** page (`progress_report.py`) queries live data via `backe
 
 | Metric | Query |
 |--------|-------|
-| Study streak (days) | Distinct `session_date` values from `study_sessions`, counted backwards from today |
 | This week completion % | Sessions this week ÷ topics in the latest `weekly_plans` entry |
 | Topics overdue | `learning_history WHERE next_review <= today AND last_reviewed IS NOT NULL` |
 | Subject avg quality | `AVG(quality_rating)` from `study_sessions` joined to `learning_history`, grouped by subject |
