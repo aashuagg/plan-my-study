@@ -35,8 +35,16 @@ def record_study_session(
     lh = db.query(LearningHistory).filter(LearningHistory.id == learning_history_id).first()
     if lh:
         if session_type == "study":
-            # First time learning - just update last_reviewed
+            # First encounter — run SM-2 so next_review and repetitions advance
             lh.last_reviewed = session_date
+            q = quality_rating if quality_rating is not None else 4
+            new_ef, new_interval, new_reps, next_review = SM2Algorithm.calculate_next_review(
+                lh.easiness_factor, lh.interval, lh.repetitions, q, reference_date=session_date
+            )
+            lh.easiness_factor = new_ef
+            lh.interval = new_interval
+            lh.repetitions = new_reps
+            lh.next_review = next_review
         elif session_type == "review":
             # Spaced repetition - update SM-2 parameters
             if quality_rating is None:
