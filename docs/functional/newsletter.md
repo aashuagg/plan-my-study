@@ -29,7 +29,9 @@ Parent reviews and manually cleans the CSV:
   - Removes page references
   - Removes school-only activities
   - Corrects wrong subject assignments
-  - Normalises subject names to app format
+  - (Subject name normalisation is now automatic on ingest for known
+    variants — see Subject Normalisation Rules below — but new/unusual
+    variants still need a manual fix or an addition to SUBJECT_ALIASES)
         │
         ▼
 Cleaned CSV saved to local machine
@@ -157,21 +159,24 @@ The school newsletter sometimes lists topics under the wrong subject heading (e.
 
 ## Subject Normalisation Rules
 
-The `subject` column must use the **exact names** that appear in the student's profile `subjects` JSON array. Common normalisations:
+The `subject` column must use the **exact names** that appear in the student's profile `subjects` JSON array.
+
+**Automated (Jul 2026):** `NewsletterParser.normalize_subject()` uppercases the subject and
+maps known variants via a `SUBJECT_ALIASES` table, applied on every ingest path (CSV, Excel,
+PDF) and on manual diary entries indirectly (those use the profile's subject list directly,
+so they're already canonical). Currently mapped:
 
 | Raw newsletter text | Normalised subject name |
 |--------------------|------------------------|
-| English / English Language | `LITERACY` |
-| Math / Maths / Mathematics | `MATHEMATICS` (or `NUMERACY` depending on profile) |
-| Hindi / Hindi Language | `HINDI` |
-| Kannada / Kannada Language | `KANNADA` |
+| Mathematics / Math | `MATHS` |
 | EVS / Environmental Studies | `GENERAL AWARENESS` |
-| G.K. / General Knowledge | `GENERAL AWARENESS` |
-| Computer Science / Computers | `COMPUTER` |
-| Art / Drawing / Craft | `ART & CRAFT` |
-| PE / Physical Education / Games | `PHYSICAL EDUCATION` |
+| Computer Science | `COMPUTER` |
 
-> **Important:** Subject names in `curriculum_items` must exactly match subjects in `learning_history`. A mismatch (e.g., "Literacy" vs "LITERACY") will cause topic lookup failures on the weekly plan page.
+Anything not in the alias table passes through as uppercased-only. Newly seen variants
+(e.g. "English Language", "G.K.") should be added to `SUBJECT_ALIASES` in
+`backend/newsletter_parser.py` rather than cleaned by hand in the CSV.
+
+> **Important:** Subject names in `curriculum_items` must exactly match subjects in `learning_history`. A mismatch (e.g., `MATHEMATICS` vs `MATHS`) silently splits one subject into two everywhere — coverage view, due-topics query, weekly plan — with no error. This exact bug existed undetected for weeks before being caught via the Monthly Topics tab and fixed Jul 2026 (10 existing rows backfilled from `MATHEMATICS` to `MATHS`).
 
 ---
 
@@ -200,6 +205,23 @@ To bypass the CSV upload process for individual or missed topics (e.g., homework
    - Initializes a new `LearningHistory` record for the topic with default SM-2 parameters (`easiness_factor = 2.5`, `interval = 1`, `repetitions = 0`, `next_review = entry_date`) if it is not already tracked.
 4. **Form Reset and Feedback**: On a successful submit, a green success banner is displayed, the page is reloaded, and the form fields are automatically reset and cleaned to accept the next manual entry.
 5. **Recent Entries List**: Displays the last 5 manually added diary entries in a table for reference and verification.
+
+---
+
+## Monthly Topics Audit Tab (Added Jul 2026)
+
+A third tab on the Upload Newsletter page (`frontend/modules/monthly_topics.py`,
+`get_curriculum_by_month()` in `backend/crud/curriculum.py`) shows every curriculum item —
+newsletter and diary entries combined — for a selected month, tagged by source, with a
+subject filter and a per-subject coverage check that flags any subject with zero topics
+that month.
+
+**Why it exists:** the parent had no way to see the full combined picture of what had been
+ingested, so gaps (a subject the school covered but the parent forgot to log, or a
+newsletter row that failed silent CSV parsing) went unnoticed until a topic turned out to
+have never appeared in any weekly plan. This tab is now the first place to check when a
+topic seems to be missing — before assuming it's a scheduling bug (see
+`docs/functional/plan_generation.md` Issue 3 for the scheduling-side counterpart).
 
 ---
 

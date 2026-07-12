@@ -84,7 +84,12 @@ Topics from `learning_history` where `next_review <= today`. Formatted as:
 - HINDI: Vowels (due: 2026-05-10, 3 days overdue, easiness: 2.3)
 ```
 
-Limited to the first **15 items** to prevent token overflow.
+Ordered by **neglect, not raw due-date**: `get_due_topics()` sorts by `last_reviewed ASC
+NULLS FIRST` (never-touched topics first) then `next_review ASC` as a tiebreak. A topic
+reviewed a few days ago ranks below one that's been untouched for weeks, even if both are
+technically "due" — see Issue 3 below for why this matters.
+
+Limited to the first **30 items** (raised from 15 in Jul 2026) to keep prompt size bounded.
 
 ### 4. Learning History Summary
 
@@ -109,8 +114,8 @@ The system prompt instructs the AI to:
 
 | Rule | Detail |
 |------|--------|
-| **Prioritise due topics** | Topics with `next_review <= today` are due and should appear this week |
-| **60/40 split** | Approx 60% new curriculum topics, 40% review topics |
+| **Prioritise due topics** | Topics with `next_review <= today` are due and should appear this week, in the neglect-first order they're listed in |
+| **Review floor, not a fixed split** | Review is *at least* 20% of the week — not a fixed 60/40 ratio. The AI is told to lean further into review when the due-topics backlog is large relative to new curriculum. (Changed Jul 2026 — a fixed ratio couldn't adapt as the monthly backlog grew faster than weekly capacity.) |
 | **No subject neglect** | No subject should go unreviewed for more than 7 consecutive days |
 | **Subject frequency** | Every subject must appear at least 2 times during the week |
 | **Even distribution** | Distribute subjects across the week; avoid consecutive same-subject days |
@@ -229,8 +234,10 @@ The `JsonOutputParser` (LangChain) appends format instructions to the prompt to 
 
 ---
 
-### Issue 3: Token Overflow for Large Curricula
+### Issue 3: Due Topics Silently Dropped Past the Cap (Fixed Jul 2026)
 
-**Problem:** The curriculum formatter limits to 20 items and the due-topics formatter limits to 15 items. Topics beyond these limits are not included in the prompt and may be missed in the plan.
+**Problem:** `get_due_topics()` had no `ORDER BY`, and the due-topics formatter capped the list at 15 items. With 40+ topics due at once and many sharing the same `next_review` date (an entire newsletter batch initialized together), the arbitrary tie-break order pushed whole subject batches past the cutoff every week — they never became AI candidates at all. This is how a 7-topic Kannada batch and a Dictation topic went unscheduled for weeks without any error or warning.
 
-**Current workaround:** Keep the monthly curriculum concise (< 20 usable topics after cleaning).
+**Fix:** `get_due_topics()` now orders by neglect (`last_reviewed ASC NULLS FIRST`, then `next_review ASC`), and the cap was raised 15 → 30. The Monthly Topics tab (Upload Newsletter page) was also added so newsletter + diary entries can be visually cross-checked against what actually appears in plans.
+
+**Still true:** the curriculum formatter (`_format_curriculum`) still caps at 20 items with no ordering — the same failure mode could recur there if a single month's newsletter exceeds ~20 usable topics after cleaning. Not yet hit in practice; worth the same fix if it is.

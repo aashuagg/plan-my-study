@@ -59,7 +59,18 @@ The quality rating is the parent's assessment of how well the child recalled the
 | **4** | 🙂 | Correct with some hesitation | Got it right with minor prompting or a short pause |
 | **5** | 😄 | Perfect response | Instant, confident, correct recall |
 
-**Threshold:** Quality ≥ 3 is considered a **successful recall**. Quality < 3 resets the SM-2 repetition counter.
+**Threshold:** Quality ≥ 3 is considered a **successful recall**. Quality < 3 resets the SM-2 repetition counter. Note 0/1/2 are functionally identical to SM-2 (same reset), differing only in how much the easiness factor drops.
+
+**How this parent actually applies it (deliberately conservative, confirmed Jul 2026):**
+| Rating | In practice |
+|--------|--------------|
+| 5 | Understands the concept AND ~90%+ correct execution |
+| 4 | Understands the concept, but only a few answers correct |
+| 3 | Understands the concept but writes/executes incorrectly |
+| 0-2 | Doesn't grasp the concept yet |
+
+5 is reserved for genuine mastery, not just "got the right idea" — intentional, to avoid
+spacing a topic out prematurely for a child still building retention.
 
 ---
 
@@ -171,6 +182,29 @@ None in the app. The parent must identify the mismatch manually and either:
 ### Planned Fix
 
 Fuzzy string matching (e.g., `rapidfuzz`) on topic lookup with a configurable similarity threshold (≥ 0.85 recommended).
+
+---
+
+## Known Issue: Duplicate Weekly Plans From Button Races (Fixed Jul 2026)
+
+### The Problem
+
+`_show_action_buttons()` in `frontend/modules/weekly_plan.py` renders "💾 Save Progress" and
+"🔄 Generate Next Week's Plan" side by side. Neither was disabled while the other's (or its
+own) slow operation ran — Streamlit doesn't disable buttons automatically — so a second
+click during a multi-second AI generation call queued up and fired again once the script
+was free. This is almost certainly why 3 duplicate `weekly_plans` rows existed for the same
+week (had to be deleted manually).
+
+### The Fix
+
+Both buttons now check a `st.session_state.action_in_progress` flag and pass
+`disabled=busy`. Clicking either sets the flag and immediately calls `st.rerun()`, so the
+*next* render shows both buttons disabled before the slow call actually starts. The flag is
+cleared right before the work begins (not after) — `_save_progress()` and
+`_generate_next_week()` both call `st.rerun()` internally on success, which halts the script
+immediately, so clearing the flag after the call would never execute and would leave the
+buttons stuck disabled (or worse, re-trigger the action on every subsequent rerun).
 
 ---
 

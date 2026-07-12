@@ -18,6 +18,13 @@ Newsletter subject variants must be normalized on ingest (e.g. `Mathematics` →
 - Copy topic names exactly as they appear in the data
 - No catch-up day — last day follows same rules as every other day
 - Each topic must belong to the subject scheduled for that day
+- Review time is a floor (not a fixed ratio) that grows with backlog size; due-topic
+  prioritization is neglect-first, not just raw next_review date.
+  See `docs/functional/plan_generation.md` for the current rule and rationale.
 
 ## Known Issues
 - No profile edit UI yet
+
+See `docs/functional/` for the maintained functional specs (plan generation, newsletter
+ingestion, progress tracking, profile) — that's the source of truth for flows, data
+formats, and resolved/open issues, kept more current than this file.

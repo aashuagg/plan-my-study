@@ -65,7 +65,7 @@ def show_setup_page(db):
             "Subjects *",
             options=[
                 "LITERACY", "NUMERACY", "HINDI", "KANNADA", "ENGLISH", "GRAMMAR",
-                "MATHEMATICS", "SCIENCE", "SOCIAL STUDIES", "GENERAL AWARENESS",
+                "MATHS", "SCIENCE", "SOCIAL STUDIES", "GENERAL AWARENESS",
                 "COMPUTER", "ART & CRAFT", "MUSIC", "PHYSICAL EDUCATION"
             ],
             default=["LITERACY", "NUMERACY", "HINDI", "KANNADA", "GENERAL AWARENESS"]

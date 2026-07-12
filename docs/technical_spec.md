@@ -14,7 +14,7 @@
 | **Data validation** | Pydantic + pydantic-settings | v2 (uses `from_attributes = True`) |
 | **AI orchestration** | LangChain | `langchain`, `langchain-ollama`, `langchain-anthropic` |
 | **AI — Dev** | Ollama | llama3.2:latest, local at `http://localhost:11434` |
-| **AI — Prod** | Claude API | claude-3-5-sonnet-20241022 |
+| **AI — Prod** | Claude API | claude-4-6-sonnet (default, see `backend/config.py`) |
 | **CLI** | Typer + Rich | Latest |
 | **Data processing** | pandas, openpyxl | For CSV/Excel newsletter parsing |
 | **PDF generation** | reportlab | Listed; not yet used in MVP |
@@ -239,13 +239,15 @@ ChatOllama(
 
 ```python
 ChatAnthropic(
-    model=settings.claude_model,        # "claude-3-5-sonnet-20241022"
+    model=settings.claude_model,        # "claude-4-6-sonnet" (default)
     api_key=settings.claude_api_key,
     temperature=0.0
 )
 ```
 
-> **Note:** The `ClaudeScheduler` import (`from langchain_anthropic import ChatAnthropic`) is commented out in the current codebase. Uncomment it before switching `AI_PROVIDER=claude`.
+> `ai_provider` defaults to `"claude"` in `backend/config.py` — Claude is the active provider
+> unless `.env` overrides `AI_PROVIDER=ollama`. The `ChatAnthropic` import is active, not
+> commented out (this doc previously said otherwise).
 
 Both schedulers inherit from `BaseScheduler` which builds the same prompt and uses `JsonOutputParser` to parse the response into a `WeeklyPlanOutput` Pydantic model.
 
@@ -260,8 +262,8 @@ Create a `.env` file in the **project root** (alongside `docker-compose.yml`):
 DATABASE_URL=postgresql://studyplanner:studyplanner123@localhost:5432/study_planner
 
 # ── AI Provider ───────────────────────────────────────────────────────
-# Options: "ollama" (default, local dev) or "claude" (production)
-AI_PROVIDER=ollama
+# Options: "ollama" (local dev) or "claude" (default in backend/config.py, production)
+AI_PROVIDER=claude
 
 # ── Ollama settings (used when AI_PROVIDER=ollama) ────────────────────
 OLLAMA_BASE_URL=http://localhost:11434
@@ -269,7 +271,7 @@ OLLAMA_MODEL=llama3.2:latest
 
 # ── Claude settings (used when AI_PROVIDER=claude) ────────────────────
 CLAUDE_API_KEY=sk-ant-...
-CLAUDE_MODEL=claude-3-5-sonnet-20241022
+CLAUDE_MODEL=claude-4-6-sonnet
 ```
 
 Config is loaded by `pydantic-settings` (`backend/config.py`) and the `.env` path is resolved relative to the project root automatically.

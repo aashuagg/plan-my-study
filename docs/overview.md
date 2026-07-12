@@ -46,6 +46,8 @@ This is **not** a multi-tenant SaaS product. It is a personal tool with a single
 | SM-2 parameters updated after each session | ✅ Done |
 | Generate next week's plan | ✅ Done |
 | Progress report page (analytics) | ✅ Done — live DB queries |
+| Monthly Topics audit tab (newsletter + diary combined, per-subject coverage check) | ✅ Done |
+| Automatic subject normalisation on ingest (`MATHEMATICS`→`MATHS`, etc.) | ✅ Done |
 
 ### 🔜 Planned — Next Phase
 
@@ -104,7 +106,7 @@ This is **not** a multi-tenant SaaS product. It is a personal tool with a single
    │           AI LAYER                   │
    │                                      │
    │  DEV:  Ollama  (llama3.2:latest)     │
-   │  PROD: Claude  (claude-3-5-sonnet)   │
+   │  PROD: Claude  (claude-4-6-sonnet)   │
    │                                      │
    │  LangChain abstracts both providers  │
    └──────────────────────────────────────┘
