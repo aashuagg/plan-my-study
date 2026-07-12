@@ -20,5 +20,4 @@ Newsletter subject variants must be normalized on ingest (e.g. `Mathematics` →
 - Each topic must belong to the subject scheduled for that day
 
 ## Known Issues
-- Subject normalization not applied on ingest — needs fix in newsletter_parser.py
 - No profile edit UI yet

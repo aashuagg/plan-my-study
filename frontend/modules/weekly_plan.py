@@ -329,15 +329,29 @@ def _show_topic_row(topic, day_date):
 def _show_action_buttons(db, user, weekly_plan):
     """Display save progress and generate next week buttons"""
     st.markdown("---")
+
+    busy = st.session_state.get('action_in_progress', False)
     col_a, col_b = st.columns(2)
-    
+
     with col_a:
-        if st.button("💾 Save Progress", type="primary", use_container_width=True):
-            _save_progress(db)
-    
+        if st.button("💾 Save Progress", type="primary", use_container_width=True, disabled=busy):
+            st.session_state.action_in_progress = 'save'
+            st.rerun()
+
     with col_b:
-        if st.button("🔄 Generate Next Week's Plan", use_container_width=True):
-            _generate_next_week(db, user, weekly_plan)
+        if st.button("🔄 Generate Next Week's Plan", use_container_width=True, disabled=busy):
+            st.session_state.action_in_progress = 'generate'
+            st.rerun()
+
+    # Runs on the rerun triggered above, once the buttons have already rendered disabled.
+    # Clear the flag before doing the work: both functions call st.rerun() on success,
+    # which halts this script immediately, so clearing it after the call would never run.
+    if busy == 'save':
+        st.session_state.action_in_progress = False
+        _save_progress(db)
+    elif busy == 'generate':
+        st.session_state.action_in_progress = False
+        _generate_next_week(db, user, weekly_plan)
 
 
 def _save_progress(db):

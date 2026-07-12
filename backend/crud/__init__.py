@@ -1,6 +1,6 @@
 from backend.crud.user import create_user, get_user, update_user
 from backend.crud.newsletter import create_newsletter, add_curriculum_items
-from backend.crud.curriculum import get_current_curriculum
+from backend.crud.curriculum import get_current_curriculum, get_curriculum_by_month
 from backend.crud.learning_history import (
     get_due_topics,
     get_learning_history,
@@ -21,6 +21,7 @@ __all__ = [
     "create_newsletter",
     "add_curriculum_items",
     "get_current_curriculum",
+    "get_curriculum_by_month",
     "get_due_topics",
     "get_learning_history",
     "update_topic_review",

@@ -15,6 +15,7 @@ from backend.schemas import NewsletterUpload, CurriculumItemSchema
 from backend.newsletter_parser import NewsletterParser
 from backend.models import Newsletter, CurriculumItem, LearningHistory
 from backend.sm2 import SM2Algorithm
+from modules.monthly_topics import show_monthly_topics_tab
 
 
 def show_upload_newsletter_page(db):
@@ -25,8 +26,8 @@ def show_upload_newsletter_page(db):
     """
     st.title("📤 Upload Monthly Newsletter")
     
-    tab1, tab2 = st.tabs(["Upload Newsletter", "Add Diary Entry"])
-    
+    tab1, tab2, tab3 = st.tabs(["Upload Newsletter", "Add Diary Entry", "Monthly Topics"])
+
     with tab1:
         st.markdown("### Upload curriculum CSV/Excel file")
         
@@ -48,6 +49,9 @@ def show_upload_newsletter_page(db):
             
     with tab2:
         _show_diary_entry_tab(db)
+
+    with tab3:
+        show_monthly_topics_tab(db)
 
 
 def _process_uploaded_file(db, uploaded_file, month, year):

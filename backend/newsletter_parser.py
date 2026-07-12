@@ -4,12 +4,28 @@ from typing import List, Dict, Any
 from datetime import datetime
 from pathlib import Path
 
+SUBJECT_ALIASES = {
+    "MATHEMATICS": "MATHS",
+    "MATH": "MATHS",
+    "EVS": "GENERAL AWARENESS",
+    "ENVIRONMENTAL STUDIES": "GENERAL AWARENESS",
+    "COMPUTER SCIENCE": "COMPUTER",
+}
+
+
 class NewsletterParser:
     """
     Parse structured newsletter tables to extract curriculum data.
     Assumes consistent table format across newsletters.
     """
-    
+
+    @staticmethod
+    def normalize_subject(subject: str) -> str:
+        """Map known newsletter subject variants to the canonical curriculum subject names."""
+        normalized = subject.strip().upper()
+        return SUBJECT_ALIASES.get(normalized, normalized)
+
+
     @staticmethod
     def parse_csv_table(file_path: str) -> List[Dict[str, Any]]:
         """
@@ -24,7 +40,7 @@ class NewsletterParser:
         curriculum_items = []
         for _, row in df.iterrows():
             item = {
-                "subject": str(row.get("subject", "")).strip(),
+                "subject": NewsletterParser.normalize_subject(str(row.get("subject", ""))),
                 "topic": str(row.get("topic", "")).strip(),
                 "start_date": NewsletterParser._parse_date(row.get("date", row.get("start_date", ""))),
                 "end_date": NewsletterParser._parse_date(row.get("end_date", "")) if "end_date" in row else None
@@ -48,7 +64,7 @@ class NewsletterParser:
         
         curriculum_items = []
         for _, row in df.iterrows():
-            subject = str(row.get("subject", "")).strip()
+            subject = NewsletterParser.normalize_subject(str(row.get("subject", "")))
             topic = str(row.get("topic", "")).strip()
             start_date = NewsletterParser._parse_date(row.get("date", row.get("start_date", "")))
             
@@ -180,11 +196,14 @@ Rules:
             if not isinstance(curriculum_data, list):
                 raise ValueError(f"Expected list from Ollama, got {type(curriculum_data)}")
             
-            # Normalize dates to YYYY-MM-DD format
+            # Normalize subjects and dates
             for item in curriculum_data:
                 if not isinstance(item, dict):
                     raise ValueError(f"Expected dict items, got {type(item)}: {item}")
-                    
+
+                if item.get("subject"):
+                    item["subject"] = NewsletterParser.normalize_subject(str(item["subject"]))
+
                 if item.get("start_date"):
                     item["start_date"] = NewsletterParser._parse_date(item["start_date"])
                 if item.get("end_date"):

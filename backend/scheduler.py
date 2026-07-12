@@ -111,8 +111,13 @@ ONLY use subjects and topics from the curriculum data provided. DO NOT make up o
 
 **SM-2 Spaced Repetition Guidelines:**
 - Topics with next_review <= today are DUE and should be prioritized
-- Topics not practiced in 7+ days risk being forgotten
-- Balance: ~60% time on NEW topics, ~40% on REVIEW topics
+- The "Topics Due for Review" list is pre-sorted by neglect: topics never reviewed, or not
+  touched in the longest time, appear first. Prefer topics earlier in that list — a topic
+  reviewed a few days ago is lower priority than one that's been sitting untouched for weeks,
+  even if both are technically "due"
+- Review time is AT LEAST 20% of the week, NOT a fixed ratio. Increase the review share well
+  beyond that floor when the due-topics backlog is large relative to new curriculum — a growing
+  backlog means review needs to win out over pace of new topics
 - Mix subjects within each day when possible (max 2 subjects per day)
 
 **Scheduling Principles:**
@@ -182,7 +187,9 @@ ONLY use subjects and topics from the curriculum data provided. DO NOT make up o
 3. Each day should total {user_profile["daily_duration_minutes"]} minutes
 4. Ensure ALL subjects appear at least 2 times during the week - no subject should appear only once
 5. Balance subject distribution: Hindi, Kannada, Literacy, Numeracy, General Awareness should each get 2-3 appearances
-6. Balance new curriculum topics (~60%) with review topics (~40%)
+6. Review must be AT LEAST 20% of this week's topics — this is a floor, not a fixed split. If the
+   "Topics Due for Review" list is much larger than "Current Curriculum," lean further into review;
+   don't force in every new topic at the expense of a growing backlog
 7. Copy topic names EXACTLY as they appear in the curriculum data
 8. The last day of the week follows the SAME rules as every other day.There is no "catch-up" day. If week ends with unscheduled topics, they move to next week.
 9. Provide a clear rationale explaining your scheduling decisions
@@ -223,7 +230,7 @@ A plan with 3+ topics on any day is a FAILED plan.
             return "No topics currently due for review."
         
         items = []
-        for topic in due_topics[:15]:  # Limit to prevent token overflow
+        for topic in due_topics[:30]:  # Pre-sorted by neglect (see get_due_topics); cap to bound prompt size
             days_overdue = (date.today() - topic["next_review"]).days if isinstance(topic["next_review"], date) else 0
             items.append(
                 f"  - {topic['subject']}: {topic['topic']} "
