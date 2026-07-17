@@ -104,7 +104,17 @@ Topics that have never been reviewed are excluded — they are "new" not "overdu
 ### 5. Optional Parent Inputs
 
 - **Focus request:** Free text, e.g. "Extra Hindi practice this week"
-- **Upcoming events:** Free text, e.g. "Olympiad on May 20"
+- **Upcoming events:** Free text, e.g. "Olympiad on May 20" or "Sessional exams Jul 21-23 —
+  light revision only, no new topics"
+
+**Availability (fixed Jul 2026):** these two fields previously only appeared on the very
+first plan ever generated (`_show_plan_generation_form`, shown only when no plan exists
+yet). Every subsequent week went through "🔄 Generate Next Week's Plan"
+(`_generate_next_week`), which called the generator with both hardcoded to `None` — there
+was no way to flag an exam week or an upcoming olympiad after the first plan. Both fields
+now also appear (collapsed in an expander, so the common no-special-request case stays
+uncluttered) above the action buttons on every week, and are cleared after a successful
+generation so a one-off note doesn't silently reapply to the following week.
 
 ---
 

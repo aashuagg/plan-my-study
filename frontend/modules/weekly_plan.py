@@ -330,16 +330,36 @@ def _show_action_buttons(db, user, weekly_plan):
     """Display save progress and generate next week buttons"""
     st.markdown("---")
 
+    # Clear next-week fields on the run *after* a successful generation, before the
+    # widgets below are instantiated this run — Streamlit forbids writing to a
+    # widget's session_state key once that widget has already been rendered this run.
+    if st.session_state.pop('clear_next_week_fields', False):
+        st.session_state.next_week_focus_request = ""
+        st.session_state.next_week_events = ""
+
     busy = st.session_state.get('action_in_progress', False)
+    is_busy = bool(busy)
+
+    with st.expander("➕ Add focus / upcoming events for next week (optional)"):
+        next_focus_request = st.text_input(
+            "Focus Request", key="next_week_focus_request",
+            placeholder="e.g., Extra Maths practice", disabled=is_busy
+        )
+        next_events = st.text_input(
+            "Upcoming Events", key="next_week_events",
+            placeholder="e.g., Sessional exams Jul 21-23 - light revision only, no new topics",
+            disabled=is_busy
+        )
+
     col_a, col_b = st.columns(2)
 
     with col_a:
-        if st.button("💾 Save Progress", type="primary", use_container_width=True, disabled=busy):
+        if st.button("💾 Save Progress", type="primary", use_container_width=True, disabled=is_busy):
             st.session_state.action_in_progress = 'save'
             st.rerun()
 
     with col_b:
-        if st.button("🔄 Generate Next Week's Plan", use_container_width=True, disabled=busy):
+        if st.button("🔄 Generate Next Week's Plan", use_container_width=True, disabled=is_busy):
             st.session_state.action_in_progress = 'generate'
             st.rerun()
 
@@ -351,7 +371,11 @@ def _show_action_buttons(db, user, weekly_plan):
         _save_progress(db)
     elif busy == 'generate':
         st.session_state.action_in_progress = False
-        _generate_next_week(db, user, weekly_plan)
+        _generate_next_week(
+            db, user, weekly_plan,
+            focus_request=next_focus_request or None,
+            events=next_events or None
+        )
 
 
 def _save_progress(db):
@@ -428,18 +452,22 @@ def _save_progress(db):
         st.info(f"Skipped {len(skipped_topics)} topic(s) not in learning history. They may be from future curriculum.")
 
 
-def _generate_next_week(db, user, weekly_plan):
+def _generate_next_week(db, user, weekly_plan, focus_request=None, events=None):
     """Generate plan for next week"""
     # Calculate next week's Monday
     current_week_start = weekly_plan.week_start_date
     next_week_start = current_week_start + timedelta(days=7)
-    
+
     with st.spinner("Generating next week's plan with AI..."):
         success, message = generate_weekly_plan_for_date(
-            db, user, st.session_state.user_id, next_week_start
+            db, user, st.session_state.user_id, next_week_start,
+            focus_request, events
         )
-        
+
         if success:
+            # Clear so a one-off focus/event note doesn't silently reapply next week
+            # (actual clearing happens on the next run - see _show_action_buttons)
+            st.session_state.clear_next_week_fields = True
             st.success(message)
             st.rerun()
         else:

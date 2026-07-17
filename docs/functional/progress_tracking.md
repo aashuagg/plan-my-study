@@ -198,13 +198,22 @@ week (had to be deleted manually).
 
 ### The Fix
 
-Both buttons now check a `st.session_state.action_in_progress` flag and pass
-`disabled=busy`. Clicking either sets the flag and immediately calls `st.rerun()`, so the
-*next* render shows both buttons disabled before the slow call actually starts. The flag is
-cleared right before the work begins (not after) — `_save_progress()` and
-`_generate_next_week()` both call `st.rerun()` internally on success, which halts the script
-immediately, so clearing the flag after the call would never execute and would leave the
-buttons stuck disabled (or worse, re-trigger the action on every subsequent rerun).
+Both buttons now check a `st.session_state.action_in_progress` flag. Clicking either sets
+the flag and immediately calls `st.rerun()`, so the *next* render shows both buttons
+disabled before the slow call actually starts. The flag is cleared right before the work
+begins (not after) — `_save_progress()` and `_generate_next_week()` both call `st.rerun()`
+internally on success, which halts the script immediately, so clearing the flag after the
+call would never execute and would leave the buttons stuck disabled (or worse, re-trigger
+the action on every subsequent rerun).
+
+**Follow-up bug (also fixed):** the flag does double duty — it holds a string (`'save'` /
+`'generate'`) identifying *which* action is pending, used below to decide what to actually
+run on the triggered rerun. That raw string was passed straight into each button's
+`disabled=` argument, but Streamlit's `disabled` prop needs an actual bool; a non-empty
+string blew up with `TypeError: 'str' object cannot be interpreted as an integer` deep in
+Streamlit's protobuf layer. Fixed by computing `is_busy = bool(busy)` separately for the
+`disabled=` argument, leaving `busy` itself holding the string for the action-dispatch
+check.
 
 ---
 
