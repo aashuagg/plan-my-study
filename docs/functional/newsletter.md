@@ -198,11 +198,15 @@ Anything not in the alias table passes through as uppercased-only. Newly seen va
 To bypass the CSV upload process for individual or missed topics (e.g., homework or extra school practice), parents can use the **Add Diary Entry** tab on the Upload Newsletter page.
 
 ### How it works:
-1. **Inputs**: The parent selects a **Date**, chooses a **Subject** (from the options configured in the student's profile), and enters the **Topic** text.
+1. **Inputs**: The parent selects a **Date**, chooses a **Subject** (from the options configured in the student's profile), enters the **Topic** text, and optionally picks a **Quality Rating** (0-5, same scale as the weekly plan — see `docs/functional/progress_tracking.md`).
 2. **Special Newsletter**: These manual entries are automatically grouped under a virtual newsletter with month `"Diary"` and year `0`.
 3. **Database Insertion**:
    - Saves a new `CurriculumItem` linked to the `"Diary"` newsletter.
    - Initializes a new `LearningHistory` record for the topic with default SM-2 parameters (`easiness_factor = 2.5`, `interval = 1`, `repetitions = 0`, `next_review = entry_date`) if it is not already tracked.
+   - **If a quality rating was given** (fixed Jul 2026): records a real `StudySession` via `record_study_session()` — the same path the weekly plan's "Save Progress" uses — so SM-2 actually advances (`easiness_factor`, `interval`, `repetitions`, `next_review`) to reflect that a revision genuinely happened. Session type (`study` vs `review`) is inferred from the topic's current `repetitions`, same logic as the weekly plan.
+   - **If no rating was given**, the topic is just added to the curriculum at its SM-2 baseline (or left untouched if already tracked) — for logging something as "covered at school" without claiming a revision took place.
+
+   Previously, submitting a diary entry for a topic **already tracked** in `learning_history` silently did nothing to its SM-2 state — no rating field even existed, so a real revision (e.g. "she practiced this dictation list again at home") went unrecorded, and the topic kept surfacing as overdue in weekly plans despite genuinely having been revised. The quality-rating field closes that gap.
 4. **Form Reset and Feedback**: On a successful submit, a green success banner is displayed, the page is reloaded, and the form fields are automatically reset and cleaned to accept the next manual entry.
 5. **Recent Entries List**: Displays the last 5 manually added diary entries in a table for reference and verification.
 

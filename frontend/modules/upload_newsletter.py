@@ -10,7 +10,7 @@ from datetime import datetime
 # Add parent directory to path to import backend
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from backend.crud import create_newsletter, add_curriculum_items, get_user
+from backend.crud import create_newsletter, add_curriculum_items, get_user, record_study_session
 from backend.schemas import NewsletterUpload, CurriculumItemSchema
 from backend.newsletter_parser import NewsletterParser
 from backend.models import Newsletter, CurriculumItem, LearningHistory
@@ -171,7 +171,12 @@ def _show_diary_entry_tab(db):
         diary_date = st.date_input("Date", value=datetime.today().date())
         diary_subject = st.selectbox("Subject", options=subjects)
         diary_topic = st.text_input("Topic", placeholder="e.g., Chapter 3: Fractions, Reading practice")
-        
+        diary_quality = st.selectbox(
+            "Quality Rating (optional — leave as 'Not rated' if she hasn't actually revised this yet)",
+            options=[None, 0, 1, 2, 3, 4, 5],
+            format_func=lambda x: "Not rated" if x is None else f"{x} - {['😰', '😟', '😕', '😐', '🙂', '😄'][x]}"
+        )
+
         submitted = st.form_submit_button("Submit Entry", type="primary")
 
     if submitted:
@@ -223,7 +228,7 @@ def _show_diary_entry_tab(db):
                         LearningHistory.subject == diary_subject,
                         LearningHistory.topic == diary_topic.strip()
                     ).first()
-                    
+
                     if not existing_lh:
                         ef, interval, reps, next_review = SM2Algorithm.initialize_topic(reference_date=diary_date)
                         lh = LearningHistory(
@@ -236,9 +241,26 @@ def _show_diary_entry_tab(db):
                             next_review=next_review
                         )
                         db.add(lh)
-                    
+                        db.commit()
+                        db.refresh(lh)
+                    else:
+                        lh = existing_lh
+
+                    # 4. If a quality rating was given, this diary entry represents an
+                    # actual revision she did — record it as a real session so SM-2
+                    # advances, instead of leaving the topic parked at its baseline state.
+                    success_message = f"✅ Diary entry saved successfully! Added '{diary_topic}' to {diary_subject} curriculum."
+                    if diary_quality is not None:
+                        session_type = "review" if lh.repetitions > 0 else "study"
+                        record_study_session(
+                            db, user_id=user_id, learning_history_id=lh.id,
+                            session_date=diary_date, session_type=session_type,
+                            quality_rating=diary_quality, notes="Logged via diary entry"
+                        )
+                        success_message += " Revision session recorded — SM-2 updated."
+
                     db.commit()
-                    st.session_state.diary_success = f"✅ Diary entry saved successfully! Added '{diary_topic}' to {diary_subject} curriculum."
+                    st.session_state.diary_success = success_message
                     st.session_state.diary_form_counter += 1
                     st.rerun()
                     
