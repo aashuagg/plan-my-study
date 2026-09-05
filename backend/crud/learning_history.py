@@ -9,10 +9,14 @@ def get_due_topics(db: Session, user_id: int) -> List[LearningHistory]:
     """Get all topics due for review, prioritized by neglect: topics never reviewed or
     not touched in the longest time come first, so a subject that was just practiced
     doesn't crowd out one that's been sitting untouched. Ties (e.g. an entire newsletter
-    batch due on the same day) are broken by how long the topic has been overdue."""
+    batch due on the same day) are broken by how long the topic has been overdue.
+
+    Graduated topics are excluded entirely — a parent has manually declared them mastered,
+    so they stop competing for review slots regardless of what SM-2 would schedule."""
     return db.query(LearningHistory).filter(
         LearningHistory.user_id == user_id,
-        LearningHistory.next_review <= date.today()
+        LearningHistory.next_review <= date.today(),
+        LearningHistory.graduated.is_(False)
     ).order_by(
         nullsfirst(LearningHistory.last_reviewed.asc()),
         LearningHistory.next_review.asc()
@@ -39,4 +43,14 @@ def update_topic_review(db: Session, learning_history_id: int, quality: int = 4)
         lh.repetitions = new_reps
         lh.last_reviewed = date.today()
         lh.next_review = next_review
+        db.commit()
+
+def set_graduated(db: Session, learning_history_id: int, graduated: bool):
+    """Manually mark a topic as graduated (mastered — stop surfacing it for review) or
+    un-graduate it. Reversible; does not touch SM-2 fields, so if un-graduated the topic
+    resumes exactly where its existing interval/easiness left off."""
+    lh = db.query(LearningHistory).filter(LearningHistory.id == learning_history_id).first()
+    if lh:
+        lh.graduated = graduated
+        lh.graduated_at = date.today() if graduated else None
         db.commit()

@@ -21,6 +21,8 @@ Newsletter subject variants must be normalized on ingest (e.g. `Mathematics` →
 - Review time is a floor (not a fixed ratio) that grows with backlog size; due-topic
   prioritization is neglect-first, not just raw next_review date.
   See `docs/functional/plan_generation.md` for the current rule and rationale.
+- Topics a parent manually marks "graduated" (mastered) are excluded from review
+  scheduling entirely, regardless of SM-2 state. See `docs/functional/progress_tracking.md`.
 
 ## Known Issues
 - No profile edit UI yet

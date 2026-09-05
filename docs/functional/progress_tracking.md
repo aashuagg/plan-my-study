@@ -46,6 +46,47 @@ Success count saved to session state (`save_success`); page reruns and displays 
 
 ---
 
+## Topic Graduation (Manual Mastery Override)
+
+Independent of the ✓/quality/notes flow above, every topic row with `type == "review"`
+(i.e. `repetitions > 0`) also shows a **"🎓 Mastered"** checkbox. It is not tied to that
+day's completion status — a topic can be graduated whether or not it's checked off that
+day — because "mark mastered" is a standing status change, not a session event.
+
+```
+Parent ticks "🎓 Mastered" on a topic row
+        │
+        ▼
+Held in st.session_state.completed_topics[topic_id]['graduated']
+        │
+        ▼
+Parent clicks "💾 Save Progress"
+        │
+        ▼
+_save_progress() syncs graduation for EVERY row with a learning_history_id
+(before the completed-topics check, so graduating alone — with nothing
+marked complete — still saves and does not hit the "nothing completed" warning)
+        │
+        ▼
+set_graduated(db, learning_history_id, graduated) — backend/crud/learning_history.py
+  - graduated=True  → learning_history.graduated=True, graduated_at=today
+  - graduated=False → learning_history.graduated=False, graduated_at=None
+```
+
+**Effect:** `get_due_topics()` and `get_overdue_topics()` both exclude graduated topics, so
+a mastered topic stops being scheduled for review and stops appearing in "Topics Needing
+Review" on the Progress Report page. See `docs/functional/plan_generation.md` → *Topic
+Graduation* for why this exists (SM-2's review queue has no way to shrink on its own as
+curriculum accumulates monthly).
+
+**Undo:** the Progress Report page has a **"🎓 Graduated Topics"** section listing every
+graduated topic with an "Un-graduate" button (calls `set_graduated(db, id, False)`
+immediately, no confirmation dialog). This exists specifically so graduating isn't a
+silent, one-way action — SM-2 fields are untouched by either direction, so un-graduating
+resumes the topic exactly where its interval/easiness left off.
+
+---
+
 ## Quality Rating Scale (0–5)
 
 The quality rating is the parent's assessment of how well the child recalled the topic during the study session. This maps directly to the SM-2 `quality` parameter.
@@ -226,9 +267,10 @@ The **Progress Report** page (`progress_report.py`) queries live data via `backe
 | Metric | Query |
 |--------|-------|
 | This week completion % | Sessions this week ÷ topics in the latest `weekly_plans` entry |
-| Topics overdue | `learning_history WHERE next_review <= today AND last_reviewed IS NOT NULL` |
+| Topics overdue | `learning_history WHERE next_review <= today AND last_reviewed IS NOT NULL AND graduated IS FALSE` |
 | Subject avg quality | `AVG(quality_rating)` from `study_sessions` joined to `learning_history`, grouped by subject |
 | Total sessions per subject | `COUNT(*)` from same join |
+| Graduated topics | `learning_history WHERE graduated IS TRUE`, ordered by `graduated_at DESC` |
 
 ### Status Thresholds
 
@@ -245,6 +287,7 @@ Status labels on the subject performance bars are derived automatically from `av
 
 - No rated sessions yet → subject performance section shows an info message instead of crashing.
 - No overdue topics → shows a "all caught up" success message.
+- No graduated topics yet → shows a caption pointing back to This Week's Plan instead of an empty table.
 
 ### Entry Point
 

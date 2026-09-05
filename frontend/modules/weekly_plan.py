@@ -8,7 +8,7 @@ import os
 # Add parent directory to path to import backend
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from backend.crud import get_latest_weekly_plan, get_learning_history, record_study_session
+from backend.crud import get_latest_weekly_plan, get_learning_history, record_study_session, set_graduated
 from backend.models import LearningHistory, StudySession
 from utils.helpers import generate_weekly_plan_for_date
 
@@ -119,7 +119,7 @@ def _show_weekly_plan_content(db, user, weekly_plan):
     _show_week_summary(weekly_topics)
     
     # Display topics by day
-    _show_topics_by_day(weekly_topics)
+    _show_topics_by_day(db, weekly_topics)
     
     # Show action buttons
     _show_action_buttons(db, user, weekly_plan)
@@ -156,7 +156,8 @@ def _build_weekly_topics(plan_data, topic_lookup):
                 "topic": topic_name,
                 "duration": duration // len(topics) if topics else duration,
                 "type": topic_type,
-                "learning_history_id": learning_entry.id if learning_entry else None
+                "learning_history_id": learning_entry.id if learning_entry else None,
+                "graduated": learning_entry.graduated if learning_entry else False
             })
             topic_counter += 1
     
@@ -199,7 +200,8 @@ def _load_completed_sessions_from_db(db, weekly_topics, week_start):
                     'notes': '',
                     'learning_history_id': topic['learning_history_id'],
                     'topic': topic['topic'],
-                    'date': topic['date']
+                    'date': topic['date'],
+                    'graduated': topic.get('graduated', False)
                 }
             
             # Mark as completed if session exists in database
@@ -229,32 +231,32 @@ def _show_week_summary(weekly_topics):
     st.divider()
 
 
-def _show_topics_by_day(weekly_topics):
+def _show_topics_by_day(db, weekly_topics):
     """Display topics grouped by day"""
     dates = sorted(set(topic['date'] for topic in weekly_topics))
-    
+
     for day_date in dates:
         # Get day name
         day_obj = datetime.strptime(day_date, "%Y-%m-%d")
         day_name = day_obj.strftime("%A, %B %d")
-        
+
         # Get topics for this day
         day_topics = [t for t in weekly_topics if t['date'] == day_date]
-        
+
         # Day header
         is_today = day_date == date.today().strftime("%Y-%m-%d")
         header_text = f"{'🔔 ' if is_today else ''}{day_name}"
-        
+
         with st.expander(header_text, expanded=is_today):
             for topic in day_topics:
-                _show_topic_row(topic, day_date)
+                _show_topic_row(db, topic, day_date)
 
 
-def _show_topic_row(topic, day_date):
+def _show_topic_row(db, topic, day_date):
     """Display a single topic row with checkbox, rating, and notes"""
     topic_id = topic['id']
     plan_id = st.session_state.get('current_plan_id', 0)
-    
+
     # Initialize state if not exists
     if topic_id not in st.session_state.completed_topics:
         st.session_state.completed_topics[topic_id] = {
@@ -264,11 +266,14 @@ def _show_topic_row(topic, day_date):
             'learning_history_id': topic['learning_history_id'],
             'date': day_date,
             'subject': topic['subject'],
-            'topic': topic['topic']
+            'topic': topic['topic'],
+            'graduated': topic.get('graduated', False)
         }
-    
+
     # Topic row
-    col_check, col_subject, col_topic, col_rating, col_notes = st.columns([0.5, 1.5, 3, 1.5, 2])
+    col_check, col_subject, col_topic, col_rating, col_notes, col_graduate = st.columns(
+        [0.5, 1.5, 3, 1.5, 1.8, 1.7]
+    )
     
     with col_check:
         completed = st.checkbox(
@@ -322,7 +327,19 @@ def _show_topic_row(topic, day_date):
                 label_visibility="collapsed"
             )
             st.session_state.completed_topics[topic_id]['notes'] = notes
-    
+
+    with col_graduate:
+        # Only meaningful once a topic has been reviewed at least once — graduating
+        # something on its first encounter makes no sense.
+        if topic['type'] == 'review' and topic['learning_history_id']:
+            graduated = st.checkbox(
+                "🎓 Mastered",
+                value=st.session_state.completed_topics[topic_id]['graduated'],
+                key=f"graduate_{plan_id}_{topic_id}",
+                help="Stop scheduling this topic for review. Saved with Save Progress; reversible from the Progress Report page."
+            )
+            st.session_state.completed_topics[topic_id]['graduated'] = graduated
+
     st.divider()
 
 
@@ -383,14 +400,27 @@ def _save_progress(db):
     saved_count = 0
     errors = []
     skipped_topics = []
-    
+
+    # Sync graduation toggles first — independent of whether a topic was marked
+    # completed today, since "mark mastered" isn't tied to logging a session.
+    graduated_count = 0
+    for data in st.session_state.completed_topics.values():
+        lh_id = data.get('learning_history_id')
+        if lh_id and 'graduated' in data:
+            set_graduated(db, lh_id, data['graduated'])
+            if data['graduated']:
+                graduated_count += 1
+
     # Get completed items
     completed_items = [(k, v) for k, v in st.session_state.completed_topics.items() if v['completed']]
-    
+
     if not completed_items:
+        if graduated_count:
+            st.session_state['save_success'] = f"✅ Mastery status saved ({graduated_count} topic(s) marked mastered)."
+            st.rerun()
         st.warning("No topics marked as completed. Check the ✓ box next to topics you've finished.")
         st.stop()
-    
+
     for topic_id, data in completed_items:
         if not data['learning_history_id']:
             skipped_topics.append(data['topic'])

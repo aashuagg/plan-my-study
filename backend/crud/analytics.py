@@ -52,6 +52,7 @@ def get_overdue_topics(db: Session, user_id: int) -> List[Dict[str, Any]]:
             LearningHistory.user_id == user_id,
             LearningHistory.next_review <= today,
             LearningHistory.last_reviewed.isnot(None),
+            LearningHistory.graduated.is_(False),
         )
         .order_by(LearningHistory.next_review)
         .all()
@@ -62,6 +63,30 @@ def get_overdue_topics(db: Session, user_id: int) -> List[Dict[str, Any]]:
             "subject": lh.subject,
             "topic": lh.topic,
             "days_overdue": (today - lh.next_review).days,
+        }
+        for lh in rows
+    ]
+
+
+def get_graduated_topics(db: Session, user_id: int) -> List[Dict[str, Any]]:
+    """Topics a parent has manually marked mastered — excluded from due/overdue queues.
+    Surfaced separately so graduating a topic isn't a silent one-way door."""
+    rows = (
+        db.query(LearningHistory)
+        .filter(
+            LearningHistory.user_id == user_id,
+            LearningHistory.graduated.is_(True),
+        )
+        .order_by(LearningHistory.graduated_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id": lh.id,
+            "subject": lh.subject,
+            "topic": lh.topic,
+            "graduated_at": lh.graduated_at,
         }
         for lh in rows
     ]
@@ -110,4 +135,5 @@ def get_analytics(db: Session, user_id: int) -> Dict[str, Any]:
         "overdue_topics": overdue_topics,
         "overdue_count": len(overdue_topics),
         "this_week_completion": get_this_week_completion(db, user_id),
+        "graduated_topics": get_graduated_topics(db, user_id),
     }

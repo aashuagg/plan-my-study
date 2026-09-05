@@ -87,7 +87,7 @@ if page == "📅 This Week's Plan":
 
 elif page == "📊 Progress Report":
     try:
-        show_progress_report_page(USER_DATA, analytics)
+        show_progress_report_page(db, USER_DATA, analytics)
     except Exception as e:
         st.error(f"Error loading Progress Report: {e}")
         import traceback

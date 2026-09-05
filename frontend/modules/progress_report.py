@@ -3,8 +3,10 @@
 import streamlit as st
 import pandas as pd
 
+from backend.crud import set_graduated
 
-def show_progress_report_page(user_data, analytics):
+
+def show_progress_report_page(db, user_data, analytics):
     """Display learning progress and analytics"""
     st.title("📊 Learning Progress Report")
     st.markdown(f"### Insights for {user_data['name']}")
@@ -16,6 +18,7 @@ def show_progress_report_page(user_data, analytics):
     _show_subject_performance(analytics)
     _show_recommendations(analytics)
     _show_overdue_topics(analytics)
+    _show_graduated_topics(db, analytics)
 
 
 def _show_key_metrics(analytics):
@@ -96,3 +99,31 @@ def _show_overdue_topics(analytics):
     df.columns = ["Subject", "Topic", "Days Overdue"]
     df = df.sort_values("Days Overdue", ascending=False).reset_index(drop=True)
     st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+def _show_graduated_topics(db, analytics):
+    """Display topics marked mastered, with a way to undo — graduating a topic stops it
+    competing for review slots, so this is the only place to reverse that decision."""
+    st.divider()
+    st.subheader("🎓 Graduated Topics")
+
+    graduated = analytics.get("graduated_topics", [])
+
+    if not graduated:
+        st.caption("No topics graduated yet. Mark a topic mastered from This Week's Plan to stop scheduling it for review.")
+        return
+
+    st.caption(f"{len(graduated)} topic(s) marked mastered — excluded from review scheduling.")
+
+    for item in graduated:
+        col_subject, col_topic, col_date, col_undo = st.columns([1.5, 3, 1.5, 1.3])
+        with col_subject:
+            st.markdown(f"**{item['subject']}**")
+        with col_topic:
+            st.markdown(item['topic'])
+        with col_date:
+            st.caption(f"Since {item['graduated_at'].strftime('%b %d, %Y')}" if item['graduated_at'] else "")
+        with col_undo:
+            if st.button("↩️ Un-graduate", key=f"ungraduate_{item['id']}"):
+                set_graduated(db, item['id'], False)
+                st.rerun()

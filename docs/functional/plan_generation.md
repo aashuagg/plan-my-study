@@ -91,6 +91,44 @@ technically "due" — see Issue 3 below for why this matters.
 
 Limited to the first **30 items** (raised from 15 in Jul 2026) to keep prompt size bounded.
 
+Topics with `graduated = TRUE` are excluded from this query entirely — see **Topic
+Graduation** below.
+
+#### Topic Graduation (Manual Mastery Override, added Sep 2026)
+
+**Problem this solves:** `last_reviewed`-based neglect sorting has no way to stop a topic
+from cycling back into the due queue forever, and SM-2's own interval growth
+(`round(interval × EF)`) is uncapped, so a topic that's been reviewed for a year keeps
+consuming review slots indefinitely. Since new curriculum arrives every month
+(`docs/functional/newsletter.md`) but weekly capacity is fixed (max 2 topics/session × 6
+sessions), the pool of "topics competing for a slot" only grows over time unless something
+can permanently exit it.
+
+**Mechanism:** a parent can mark any topic that's been reviewed at least once (`repetitions
+> 0`) as **graduated** — a manual override, not an algorithmic one. `learning_history` gets
+two new columns: `graduated` (bool) and `graduated_at` (date). `get_due_topics()` and
+`get_overdue_topics()` (`backend/crud/analytics.py`) both filter `graduated IS FALSE`, so a
+graduated topic stops appearing in the AI prompt and in the Progress Report's overdue list —
+it never competes for a slot again unless un-graduated.
+
+**Where it's set:** from "This Week's Plan" — see `docs/functional/progress_tracking.md` for
+the UI flow and the undo path (Progress Report → Graduated Topics → Un-graduate).
+
+**Deliberately no algorithmic gate:** graduation is entirely the parent's judgment call: no
+minimum repetitions/EF/interval threshold is enforced beyond `repetitions > 0`. This mirrors
+past guidance on this codebase to prefer parent-driven overrides over the algorithm
+guessing at mastery.
+
+**Reversible:** un-graduating clears `graduated`/`graduated_at` only — SM-2 fields
+(`easiness_factor`, `interval`, `repetitions`, `next_review`) are untouched, so the topic
+resumes exactly where it left off rather than restarting its spacing curve.
+
+**Still true:** graduation only bounds the review-queue's *lower* bound (parent removes
+topics they know are solid). It does not itself cap `next_review` growth for
+non-graduated topics — an interval ceiling and overdue-ratio-based sorting (rather than
+raw `last_reviewed` recency) were discussed as complementary fixes but are not yet
+implemented.
+
 ### 4. Learning History Summary
 
 A per-subject summary of topics that have been reviewed at least once (`last_reviewed IS NOT NULL`):
