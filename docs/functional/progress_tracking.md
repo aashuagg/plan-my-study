@@ -153,7 +153,17 @@ else:
     else:
         new_interval = round(current_interval × new_EF)
         # e.g., interval=6, EF=2.5 → next interval = 15 days
+
+    new_interval = min(new_interval, MAX_INTERVAL_DAYS)  # 60, added Sep 2026
 ```
+
+**Max interval cap (added Sep 2026):** `SM2Algorithm.MAX_INTERVAL_DAYS = 60`. Uncapped,
+successful reviews compound fast — 1 → 6 → 15 → 37 → 92 → 230+ days — so a topic reviewed
+consistently well could go untouched for the better part of a year. The cap clamps
+`new_interval` on every successful-review branch (not the failure-reset branch, which is
+already 1 day). It does not stop a topic from being scheduled forever — see **Topic
+Graduation** above for the manual override that does that; the cap only bounds how stale
+a still-active topic's gap can get.
 
 ### Session Type
 
@@ -180,7 +190,7 @@ next_review = session_date + timedelta(days=new_interval)
 |--------------------------|----------|-------------|
 | 1 (first success) | 1 day | Tomorrow |
 | 2 (second success) | 6 days | ~1 week |
-| 3+ (ongoing) | `round(prev_interval × EF)` | Grows exponentially |
+| 3+ (ongoing) | `min(round(prev_interval × EF), 60)` | Grows exponentially, capped at 60 days |
 | Any failure (quality < 3) | 1 day | Tomorrow |
 
 The `reference_date` parameter in `SM2Algorithm.calculate_next_review()` defaults to `date.today()`, so `next_review` is always calculated from the actual session date, not the plan date.

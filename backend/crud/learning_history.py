@@ -1,26 +1,36 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import nullsfirst
 from backend.models import LearningHistory
 from backend.sm2 import SM2Algorithm
 from datetime import date
 from typing import List
 
 def get_due_topics(db: Session, user_id: int) -> List[LearningHistory]:
-    """Get all topics due for review, prioritized by neglect: topics never reviewed or
-    not touched in the longest time come first, so a subject that was just practiced
-    doesn't crowd out one that's been sitting untouched. Ties (e.g. an entire newsletter
-    batch due on the same day) are broken by how long the topic has been overdue.
+    """Get all topics due for review, prioritized by overdue ratio (days_overdue /
+    interval) rather than raw last_reviewed recency: a topic overdue relative to its own
+    spacing stage ranks above one that's only marginally late in absolute terms. Without
+    this, a topic deep into its SM-2 curve (e.g. interval=90, 8 days overdue = ~9% late)
+    would outrank one still early in learning (interval=1, 3 days overdue = 300% late)
+    just because its last_reviewed date is older — starving young topics of the
+    reinforcement they need most. Ties (equal ratio — most commonly 0, i.e. due today but
+    not yet overdue, as happens for an entire newsletter batch initialized together) fall
+    back to last_reviewed ASC NULLS FIRST, then next_review ASC.
 
     Graduated topics are excluded entirely — a parent has manually declared them mastered,
     so they stop competing for review slots regardless of what SM-2 would schedule."""
-    return db.query(LearningHistory).filter(
+    today = date.today()
+    rows = db.query(LearningHistory).filter(
         LearningHistory.user_id == user_id,
-        LearningHistory.next_review <= date.today(),
+        LearningHistory.next_review <= today,
         LearningHistory.graduated.is_(False)
-    ).order_by(
-        nullsfirst(LearningHistory.last_reviewed.asc()),
-        LearningHistory.next_review.asc()
     ).all()
+
+    def sort_key(lh: LearningHistory):
+        days_overdue = (today - lh.next_review).days
+        overdue_ratio = days_overdue / max(lh.interval, 1)
+        last_reviewed_key = lh.last_reviewed or date.min
+        return (-overdue_ratio, last_reviewed_key, lh.next_review)
+
+    return sorted(rows, key=sort_key)
 
 def get_learning_history(db: Session, user_id: int) -> List[LearningHistory]:
     """Get all learning history for user"""

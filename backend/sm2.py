@@ -6,7 +6,15 @@ class SM2Algorithm:
     SM-2 spaced repetition algorithm for calculating review intervals.
     Based on SuperMemo 2 algorithm by Piotr Wozniak.
     """
-    
+
+    # Uncapped, interval growth compounds fast (round(interval * ef)): 1 -> 6 -> 15 -> 37
+    # -> 92 -> 230+ days. Past a couple months a topic is due so rarely it's effectively
+    # invisible for a school term, and by the time it resurfaces it may be genuinely
+    # forgotten. Capping keeps every non-graduated topic touched at least this often;
+    # topics a parent has actually confirmed mastered should be graduated instead (see
+    # LearningHistory.graduated) rather than relying on the interval ceiling to hide them.
+    MAX_INTERVAL_DAYS = 60
+
     @staticmethod
     def calculate_next_review(
         easiness_factor: float,
@@ -49,7 +57,9 @@ class SM2Algorithm:
                 new_interval = 6
             else:
                 new_interval = round(interval * new_ef)
-        
+
+            new_interval = min(new_interval, SM2Algorithm.MAX_INTERVAL_DAYS)
+
         # Calculate next review date
         base_date = reference_date if reference_date else date.today()
         next_review_date = base_date + timedelta(days=new_interval)

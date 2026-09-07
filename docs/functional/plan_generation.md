@@ -84,10 +84,16 @@ Topics from `learning_history` where `next_review <= today`. Formatted as:
 - HINDI: Vowels (due: 2026-05-10, 3 days overdue, easiness: 2.3)
 ```
 
-Ordered by **neglect, not raw due-date**: `get_due_topics()` sorts by `last_reviewed ASC
-NULLS FIRST` (never-touched topics first) then `next_review ASC` as a tiebreak. A topic
-reviewed a few days ago ranks below one that's been untouched for weeks, even if both are
-technically "due" — see Issue 3 below for why this matters.
+Ordered by **overdue ratio, not raw recency** (changed Sep 2026 — see Issue 4 below):
+`get_due_topics()` sorts by `days_overdue / interval` descending, so a topic overdue
+relative to its own spacing stage ranks above one that's only marginally late in absolute
+terms — a topic with `interval=1` overdue by 3 days (ratio 3.0) outranks one with
+`interval=90` overdue by 8 days (ratio ~0.09), even though the second one's raw
+`last_reviewed` date is much older. Ties (most commonly ratio 0 — due today but not yet
+overdue, as happens for an entire newsletter batch initialized together) fall back to
+`last_reviewed ASC NULLS FIRST`, then `next_review ASC` — this recovers the old
+neglect-first behavior exactly for that common same-day-batch case. See Issue 3 for the
+original neglect-vs-due-date problem this evolved from.
 
 Limited to the first **30 items** (raised from 15 in Jul 2026) to keep prompt size bounded.
 
@@ -123,11 +129,34 @@ guessing at mastery.
 (`easiness_factor`, `interval`, `repetitions`, `next_review`) are untouched, so the topic
 resumes exactly where it left off rather than restarting its spacing curve.
 
-**Still true:** graduation only bounds the review-queue's *lower* bound (parent removes
-topics they know are solid). It does not itself cap `next_review` growth for
-non-graduated topics — an interval ceiling and overdue-ratio-based sorting (rather than
-raw `last_reviewed` recency) were discussed as complementary fixes but are not yet
-implemented.
+**Complementary, not a replacement:** graduation bounds the *pool size* (parent actively
+removes topics they know are solid). It doesn't by itself stop a non-graduated topic's
+interval from growing — that's handled separately by the interval cap (Issue 4) and the
+overdue-ratio sort above.
+
+---
+
+### Issue 4: Interval Growth Was Uncapped, Letting Mature Topics Both Starve New Ones and Go Stale (Fixed Sep 2026)
+
+**Problem:** `SM2Algorithm.calculate_next_review()`'s `round(interval × EF)` compounds
+every successful review with no ceiling — 1 → 6 → 15 → 37 → 92 → 230+ days. Two
+compounding issues followed: (1) the due-topics sort used raw `last_reviewed` recency, so
+a topic sitting on a 90-day interval and only marginally overdue would still outrank a
+topic still early in learning (short interval, proportionally far more overdue) purely
+because its last touch was longer ago in absolute terms; (2) with no cap, a mature topic's
+gap could stretch past a full school term, by which point it's practically forgotten and
+also invisible to scheduling for months at a stretch.
+
+**Fix:** two changes, deliberately kept separate from topic graduation (Issue that added
+graduation, above) because they solve a different problem — bounding staleness for topics
+still *in* rotation, not shrinking the rotation itself:
+1. `get_due_topics()` now sorts by overdue ratio (`days_overdue / interval`) instead of
+   raw `last_reviewed` — see the "Topics Due for SM-2 Review" section above.
+2. `SM2Algorithm.MAX_INTERVAL_DAYS = 60` (`backend/sm2.py`) — `calculate_next_review()`
+   clamps `new_interval` to this ceiling on every successful-review branch, so no
+   non-graduated topic's review gap can exceed 60 days no matter how high its easiness
+   factor climbs. A topic a parent has actually confirmed mastered should be graduated
+   instead of relying on this ceiling to hide it.
 
 ### 4. Learning History Summary
 
