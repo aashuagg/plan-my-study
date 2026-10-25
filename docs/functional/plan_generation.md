@@ -77,6 +77,14 @@ Pulled from `curriculum_items` for the active newsletter period. Formatted as:
 
 Limited to the first **20 items** to prevent token overflow.
 
+Topics graduated in `learning_history` are excluded here too (fixed Sep 2026 — see
+**Topic Graduation** below). A `curriculum_item` has no natural end date once ingested
+(`end_date` is usually `NULL`), so without this a topic that exists in both
+`curriculum_items` and `learning_history` — common, since a topic is typically ingested
+from the newsletter and *then* studied — would keep resurfacing as a "new topic"
+candidate forever after being graduated, even though graduation had already correctly
+removed it from the review side.
+
 ### 3. Topics Due for SM-2 Review
 
 Topics from `learning_history` where `next_review <= today`. Formatted as:
@@ -112,10 +120,11 @@ can permanently exit it.
 
 **Mechanism:** a parent can mark any topic that's been reviewed at least once (`repetitions
 > 0`) as **graduated** — a manual override, not an algorithmic one. `learning_history` gets
-two new columns: `graduated` (bool) and `graduated_at` (date). `get_due_topics()` and
-`get_overdue_topics()` (`backend/crud/analytics.py`) both filter `graduated IS FALSE`, so a
-graduated topic stops appearing in the AI prompt and in the Progress Report's overdue list —
-it never competes for a slot again unless un-graduated.
+two new columns: `graduated` (bool) and `graduated_at` (date). `get_due_topics()`,
+`get_overdue_topics()` (`backend/crud/analytics.py`), and `get_current_curriculum()`
+(`backend/crud/curriculum.py`, fixed Sep 2026 — see Issue 5 below) all exclude graduated
+topics, so a graduated topic stops appearing anywhere in the AI prompt and in the Progress
+Report's overdue list — it never competes for a slot again unless un-graduated.
 
 **Where it's set:** from "This Week's Plan" — see `docs/functional/progress_tracking.md` for
 the UI flow and the undo path (Progress Report → Graduated Topics → Un-graduate).
@@ -157,6 +166,32 @@ still *in* rotation, not shrinking the rotation itself:
    non-graduated topic's review gap can exceed 60 days no matter how high its easiness
    factor climbs. A topic a parent has actually confirmed mastered should be graduated
    instead of relying on this ceiling to hide it.
+
+---
+
+### Issue 5: Graduated Topics Kept Resurfacing via Current Curriculum (Fixed Sep 2026)
+
+**Problem:** graduation (Issue above) only ever filtered `get_due_topics()` — the
+review-queue side. `get_current_curriculum()` (`backend/crud/curriculum.py`) pulls
+`curriculum_items` purely by date window (`start_date <= today`, `end_date` usually
+`NULL`) with zero awareness of `learning_history` or its `graduated` flag. A topic that
+exists in *both* tables — the normal case: a topic is ingested from the newsletter into
+`curriculum_items`, then studied, creating a `learning_history` row — kept being offered
+to the AI as a "new topic to cover" candidate forever after graduation, since its
+`curriculum_item` has no end date to naturally retire it. Caught in practice: `MATHS:
+Playing with numbers 21 to 50` was graduated, then reappeared in the very next generated
+plan because it was still present in "Current Curriculum," even though it had correctly
+disappeared from "Topics Due for Review."
+
+**Fix:** `get_current_curriculum()` now also excludes any `(subject, topic)` pair with a
+graduated `learning_history` row for that user, matched by exact string equality (same
+matching approach as the `topic_lookup` in `frontend/modules/weekly_plan.py` — see Issue 1
+for why exact-match topic naming is a known fragility here).
+
+**Still true:** an already-*generated* weekly plan is a frozen JSON snapshot
+(`weekly_plans.plan_data`) — graduating a topic never retroactively removes it from a plan
+that already included it before the graduation happened. This fix only affects plans
+generated *after* graduation, same as the interval cap and ratio sort above.
 
 ### 4. Learning History Summary
 
@@ -278,7 +313,7 @@ The `JsonOutputParser` (LangChain) appends format instructions to the prompt to 
 | Aspect | Ollama (llama3.2) | Claude (sonnet) |
 |--------|-------------------|-----------------|
 | **2-topic hard limit** | Frequently violated (3–4 topics per day common) | Reliably respected |
-| **Subject-topic matching** | Often mismatches topics to wrong subjects | Consistently correct |
+| **Subject-topic matching** | Often mismatches topics to wrong subjects | Usually correct, but not immune (see Issue 6) |
 | **Topic name fidelity** | Sometimes paraphrases topics | Copies names exactly |
 | **JSON format** | Uses `format="json"` mode to force structure; occasionally malformed | Clean JSON consistently |
 | **Rationale quality** | Brief and generic | Detailed and specific |
@@ -318,3 +353,37 @@ The `JsonOutputParser` (LangChain) appends format instructions to the prompt to 
 **Fix:** `get_due_topics()` now orders by neglect (`last_reviewed ASC NULLS FIRST`, then `next_review ASC`), and the cap was raised 15 → 30. The Monthly Topics tab (Upload Newsletter page) was also added so newsletter + diary entries can be visually cross-checked against what actually appears in plans.
 
 **Still true:** the curriculum formatter (`_format_curriculum`) still caps at 20 items with no ordering — the same failure mode could recur there if a single month's newsletter exceeds ~20 usable topics after cleaning. Not yet hit in practice; worth the same fix if it is.
+
+---
+
+### Issue 6: Claude Also Violates Subject-Topic Matching, Silently Dropping the Session (found Sep 2026)
+
+**Problem:** the "Subject-Topic Matching" hard constraint (see above) is prompt-only —
+there's no post-generation validation, and it turns out Claude isn't immune to violating
+it despite the "Consistently correct" claim this doc used to make. Caught directly: a
+generated week paired `subjects: ["MATHS", "HINDI"]` against
+`topics: ["Shabd Rachna (Word formation)", "Do varnon wale shabd"]` for one day — but
+"Shabd Rachna (Word formation)" is a HINDI topic in `learning_history`, not MATHS. A
+second, identical mismatch ("Teen varnon wale shabd," also HINDI, labeled MATHS) turned up
+in the same plan when the parent spotted the pattern and asked to check for more.
+
+**Why this is worse than a cosmetic labeling slip:** `_build_weekly_topics()`
+(`frontend/modules/weekly_plan.py`) resolves each topic's `learning_history_id` via the
+exact-match key `f"{subject}|{topic}"`. A wrong stated subject means this lookup misses
+even though the topic genuinely exists — `learning_history_id` comes back `None`, the
+badge defaults to "📖 New Topic" (masking real review history, e.g. `reps=2`), and if the
+parent ticks it complete and saves, the session is silently skipped ("not in learning
+history") — the real progress update never happens. This is functionally the same failure
+mode as Issue 1 (topic name mismatch) but on the *subject* field instead of the topic
+name, so the existing "fuzzy match the topic" planned fix wouldn't have caught it.
+
+**Current workaround:** manual — cross-check each plan's stated subject against
+`learning_history` for that exact topic string, and patch `weekly_plans.plan_data`
+directly for any mismatch found (both instances above were fixed this way).
+
+**Planned fix:** validate `plan_data` right after generation (the same validation gap
+Issue 2 already flagged for Ollama's topic-count violations) — for each day, check every
+topic's stated subject against a `(subject, topic) -> subject` lookup built from
+`learning_history` + `curriculum_items`, and either correct the subject automatically (a
+topic's true subject is unambiguous once ingested) or flag the day for the parent before
+saving. Not yet implemented.

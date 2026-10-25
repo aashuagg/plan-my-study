@@ -176,6 +176,13 @@ Anything not in the alias table passes through as uppercased-only. Newly seen va
 (e.g. "English Language", "G.K.") should be added to `SUBJECT_ALIASES` in
 `backend/newsletter_parser.py` rather than cleaned by hand in the CSV.
 
+**Existing English and Grammar data merged (25 Oct 2026):** This was a one-time merge.
+Existing curriculum, learning history, profile subjects, and saved plan subject labels
+were migrated together; topic names, session links, ratings, and review schedules were
+preserved. Future newsletter imports retain `GRAMMAR` as a separate subject; it is
+not automatically mapped to `ENGLISH`. Grammar is no longer a separate option in
+the profile setup form.
+
 > **Important:** Subject names in `curriculum_items` must exactly match subjects in `learning_history`. A mismatch (e.g., `MATHEMATICS` vs `MATHS`) silently splits one subject into two everywhere — coverage view, due-topics query, weekly plan — with no error. This exact bug existed undetected for weeks before being caught via the Monthly Topics tab and fixed Jul 2026 (10 existing rows backfilled from `MATHEMATICS` to `MATHS`).
 
 ---

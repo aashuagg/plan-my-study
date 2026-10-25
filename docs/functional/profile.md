@@ -35,7 +35,7 @@ The profile is stored in the `users` table. All fields are set at creation time 
 
 ```
 LITERACY          NUMERACY          HINDI
-KANNADA           ENGLISH           GRAMMAR
+KANNADA           ENGLISH
 MATHS             SCIENCE           SOCIAL STUDIES    GENERAL AWARENESS
 COMPUTER          ART & CRAFT       MUSIC
 PHYSICAL EDUCATION

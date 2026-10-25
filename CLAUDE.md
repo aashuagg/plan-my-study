@@ -8,7 +8,7 @@ A web-based study planner for a parent to manage their child's daily study sched
 
 ## Subjects
 - **UKG (2024-25):** LITERACY, NUMERACY, HINDI, KANNADA, GENERAL AWARENESS
-- **Class 1 (2025-26):** ENGLISH, MATHS, HINDI, KANNADA, GRAMMAR, GENERAL AWARENESS, COMPUTER
+- **Class 1 (2025-26):** ENGLISH (including Grammar), MATHS, HINDI, KANNADA, GENERAL AWARENESS, COMPUTER
 
 Newsletter subject variants must be normalized on ingest (e.g. `Mathematics` → `MATHS`, `EVS` → `GENERAL AWARENESS`, `Computer Science` → `COMPUTER`).
 

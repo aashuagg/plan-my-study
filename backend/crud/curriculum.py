@@ -1,19 +1,35 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import extract
-from backend.models import CurriculumItem, Newsletter
+from backend.models import CurriculumItem, Newsletter, LearningHistory
 from datetime import date
 from typing import List, Dict, Any
 
 def get_current_curriculum(db: Session, user_id: int, current_date: date) -> List[CurriculumItem]:
-    """Get curriculum topics for current date"""
+    """Get curriculum topics for current date, excluding any already graduated (mastered)
+    in learning_history. Without this, a topic that exists in both curriculum_items and
+    learning_history (common — a topic gets ingested from the newsletter, then studied)
+    would keep resurfacing as a 'new topic' candidate forever after graduation, since its
+    curriculum_item has no end_date: graduation only ever excluded it from the review
+    side (get_due_topics), not the new-topic side."""
     newsletters = db.query(Newsletter).filter(Newsletter.user_id == user_id).all()
     newsletter_ids = [n.id for n in newsletters]
 
-    return db.query(CurriculumItem).filter(
+    graduated_keys = {
+        (subject, topic) for subject, topic in db.query(
+            LearningHistory.subject, LearningHistory.topic
+        ).filter(
+            LearningHistory.user_id == user_id,
+            LearningHistory.graduated.is_(True)
+        ).all()
+    }
+
+    items = db.query(CurriculumItem).filter(
         CurriculumItem.newsletter_id.in_(newsletter_ids),
         CurriculumItem.start_date <= current_date,
         (CurriculumItem.end_date >= current_date) | (CurriculumItem.end_date == None)
     ).all()
+
+    return [c for c in items if (c.subject, c.topic) not in graduated_keys]
 
 
 def get_curriculum_by_month(db: Session, user_id: int, month: int, year: int) -> List[Dict[str, Any]]:

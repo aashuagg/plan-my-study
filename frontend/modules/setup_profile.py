@@ -64,7 +64,7 @@ def show_setup_page(db):
         subjects = st.multiselect(
             "Subjects *",
             options=[
-                "LITERACY", "NUMERACY", "HINDI", "KANNADA", "ENGLISH", "GRAMMAR",
+                "LITERACY", "NUMERACY", "HINDI", "KANNADA", "ENGLISH",
                 "MATHS", "SCIENCE", "SOCIAL STUDIES", "GENERAL AWARENESS",
                 "COMPUTER", "ART & CRAFT", "MUSIC", "PHYSICAL EDUCATION"
             ],
