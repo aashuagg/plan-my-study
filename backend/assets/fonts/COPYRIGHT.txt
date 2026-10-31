@@ -1,0 +1,5 @@
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)
+
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/kannada)
+
+Copyright 2015-2022 Google Inc. All Rights Reserved.

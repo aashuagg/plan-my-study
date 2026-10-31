@@ -282,7 +282,7 @@ def _show_diary_entry_tab(db):
         if diary_newsletter:
             recent_entries = db.query(CurriculumItem).filter(
                 CurriculumItem.newsletter_id == diary_newsletter.id
-            ).order_by(CurriculumItem.id.desc()).limit(5).all()
+            ).order_by(CurriculumItem.id.desc()).limit(10).all()
             
             if recent_entries:
                 data = []

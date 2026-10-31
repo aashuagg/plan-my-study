@@ -39,6 +39,7 @@ This is **not** a multi-tenant SaaS product. It is a personal tool with a single
 | Curriculum items stored per newsletter with start/end dates | ✅ Done |
 | SM-2 spaced repetition tracking initialised per topic | ✅ Done |
 | AI-generated weekly study plan (6 days) | ✅ Done |
+| Topic practice papers with parent instructions, on-screen preview, answer keys, and PDF/Markdown downloads | ✅ Done — see [functional spec](functional/practice_papers.md) |
 | Dual AI provider: Ollama (dev) / Claude API (prod) | ✅ Done |
 | Weekly plan displayed day-by-day with expand/collapse | ✅ Done |
 | Topic completion tracking with quality rating (0–5) | ✅ Done |

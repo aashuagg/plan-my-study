@@ -8,7 +8,8 @@ python-dotenv
 langchain
 langchain-ollama
 langchain-anthropic
-reportlab
+reportlab>=4.4
+uharfbuzz>=0.39
 pandas
 openpyxl
 python-multipart

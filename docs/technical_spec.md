@@ -17,7 +17,7 @@
 | **AI — Prod** | Claude API | claude-4-6-sonnet (default, see `backend/config.py`) |
 | **CLI** | Typer + Rich | Latest |
 | **Data processing** | pandas, openpyxl | For CSV/Excel newsletter parsing |
-| **PDF generation** | reportlab | Listed; not yet used in MVP |
+| **PDF generation** | reportlab >=4.4, uharfbuzz >=0.39 | Practice-paper PDFs with embedded Noto fonts and Indic text shaping |
 | **File upload** | python-multipart | For Streamlit file uploader |
 | **Config** | python-dotenv / pydantic-settings | Loads `.env` from project root |
 
@@ -211,6 +211,36 @@ When a newsletter is uploaded, every new curriculum item gets a `learning_histor
 ---
 
 ## AI Provider Setup
+
+### Topic practice papers
+
+`backend/practice_paper.py` provides a separate paper-generation flow, routed through
+`frontend/modules/practice_paper.py` from the sidebar. It uses the same provider/model
+environment settings as weekly planning, with temperature 0.3. Claude requests allow
+8,192 output tokens, a 120-second timeout, and one retry; Ollama uses JSON mode and a
+120-second client timeout. Unsupported providers and a missing Claude key are rejected.
+
+`get_practice_topics()` reads the student's curriculum and learning-history topics,
+deduplicates exact subject/topic pairs, and includes mastered and historical topics.
+`generate_practice_paper()` sends literal message data (including parent instructions)
+and parses the response with `JsonOutputParser`, then validates it with Pydantic.
+The request's grade and board come from the active student profile; the system
+prompt uses these fields to determine education level without a fixed age group.
+`PaperContent` contains a title, child instructions, and 1–20 `Question` objects with
+nonempty `question` and `answer` strings. Exact requested question count and duplicate
+question text are also checked. `PracticePaper` adds application-owned subject, topic,
+grade, difficulty, and duration metadata.
+
+`paper_markdown()` exports the paper and answer key separately. `backend/paper_pdf.py`
+renders separate A4 PDFs in memory using ReportLab and HarfBuzz shaping, with bundled
+OFL-licensed Noto Sans, Devanagari, and Kannada fonts. Text is escaped before paragraph
+rendering, and script runs select the appropriate font. The UI caches PDF bytes by
+serialized paper content (up to 32 entries), preserving the on-screen preview and
+Markdown downloads if PDF creation fails. Results live only in
+Streamlit session state, scoped to the student and displayed against the selected
+subject/topic. This feature has no database writes or schema changes. Its PDF export
+requires the ReportLab and `uharfbuzz` versions listed in `requirements.txt`.
+See [Practice Papers](functional/practice_papers.md) for the maintained functional spec.
 
 The active AI provider is controlled by the `AI_PROVIDER` environment variable.
 

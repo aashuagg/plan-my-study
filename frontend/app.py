@@ -15,6 +15,7 @@ from modules.setup_profile import show_setup_page
 from modules.weekly_plan import show_weekly_plan_page
 from modules.progress_report import show_progress_report_page
 from modules.upload_newsletter import show_upload_newsletter_page
+from modules.practice_paper import show_practice_paper_page
 
 # Initialize database
 init_db()
@@ -75,14 +76,17 @@ st.sidebar.divider()
 
 page = st.sidebar.radio(
     "Navigate",
-    ["📅 This Week's Plan", "📊 Progress Report", "📤 Upload Newsletter"]
+    ["📅 This Week's Plan", "📊 Progress Report", "📤 Upload Newsletter", "📝 Practice Papers"]
 )
 
 # ===================================================================
 # PAGE ROUTING
 # ===================================================================
 
-if page == "📅 This Week's Plan":
+if page == "📝 Practice Papers":
+    show_practice_paper_page(db, user)
+
+elif page == "📅 This Week's Plan":
     show_weekly_plan_page(db, user)
 
 elif page == "📊 Progress Report":
