@@ -69,9 +69,10 @@ python cli.py init
 
 ### Topic practice papers
 
-Open **📝 Practice Papers** in the sidebar, select a subject and saved topic, and add
+Open **📝 Practice Papers** in the sidebar, select a subject and one or more saved topics, and add
 any extra instructions. Choose the question count, difficulty, and duration, then
-generate a paper using the configured Claude or Ollama provider. The student paper
+generate a paper using the configured Claude or Ollama provider. The question count
+is the total for the paper, with at least one question per selected topic. The student paper
 and parent answer key appear on screen and can be downloaded separately as PDF or Markdown. Generation
 does not change review ratings; download results to keep them beyond the current
 browser session. See [the practice-paper spec](docs/functional/practice_papers.md).

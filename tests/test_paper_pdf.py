@@ -30,6 +30,21 @@ class PaperPdfTests(unittest.TestCase):
                 self.assertEqual("Answer: CAT" in content, answers)
                 self.assertEqual("Name:" in content, not answers)
 
+    @unittest.skipUnless(shutil.which("pdftotext"), "Poppler is needed for PDF content checks")
+    def test_multi_topic_pdf_lists_topics_and_question_labels(self):
+        paper = self.paper()
+        paper.topics = ["Jumbled words", "Naming words"]
+        paper.questions[0].topic = "Jumbled words"
+        paper.questions.append(Question(question="Name a fruit.", answer="Apple", topic="Naming words"))
+        with tempfile.TemporaryDirectory() as directory:
+            for answers in (False, True):
+                path = Path(directory) / "paper.pdf"
+                path.write_bytes(paper_pdf(paper, answers=answers))
+                content = subprocess.check_output(["pdftotext", str(path), "-"], text=True)
+                for topic in paper.topics:
+                    self.assertIn(f"- {topic}", content)
+                    self.assertIn(f"Topic: {topic}", content)
+
     def test_long_papers_and_indic_scripts_render(self):
         paper = self.paper()
         for title, question, answer in [

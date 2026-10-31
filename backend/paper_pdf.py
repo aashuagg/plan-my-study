@@ -27,6 +27,7 @@ def _register_fonts():
 
 def _text(value: str) -> str:
     """Treat generated text literally, and shape each script with a supporting font."""
+    original = value
     value = escape(value).replace("\n", "<br/>")
     scripts = [
         (r"[\u0900-\u097f][\u0900-\u097f\u200c\u200d]*", "NotoSansDevanagari"),
@@ -35,7 +36,10 @@ def _text(value: str) -> str:
     present = [(pattern, font) for pattern, font in scripts if re.search(pattern, value)]
     # Indic Noto fonts also cover Latin and punctuation. Keep a whole sentence in
     # one font so shaping preserves spaces and punctuation across script boundaries.
-    if len(present) == 1:
+    if len(present) == 1 and all(
+        char in "\n\r\t" or ord(char) in pdfmetrics.getFont(present[0][1]).face.charToGlyph
+        for char in original
+    ):
         return f'<font name="{present[0][1]}">{value}</font>'
     for pattern, font in present:
         value = re.sub(pattern, lambda match: f'<font name="{font}">{match.group()}</font>', value)
@@ -62,7 +66,8 @@ def paper_pdf(paper: PracticePaper, *, answers: bool = False) -> bytes:
         Paragraph(_text("ANSWER KEY" if answers else "PRACTICE PAPER"), label),
         Paragraph(_text(paper.title), title),
         Paragraph(_text(f"{paper.subject}  |  {paper.grade}  |  {paper.difficulty}"), meta),
-        Paragraph(_text(f"Topic: {paper.topic}"), meta),
+        Paragraph("Topics:", meta),
+        *[Paragraph(_text(f"- {topic}"), meta) for topic in paper.topics],
         Paragraph(f"Time: {paper.duration_minutes} minutes  |  Total marks: {len(paper.questions)} (1 per question)", meta),
         HRFlowable(width="100%", color=colors.HexColor("#cbd5e1")), Spacer(1, 14),
     ]
@@ -72,6 +77,8 @@ def paper_pdf(paper: PracticePaper, *, answers: bool = False) -> bytes:
     for i, question in enumerate(paper.questions, 1):
         block = [Paragraph(f"Question {i}  -  1 mark", label),
                  Paragraph(_text(question.question), body)]
+        if len(paper.topics) > 1:
+            block.append(Paragraph(_text(f"Topic: {question.topic}"), meta))
         if answers:
             block.append(Paragraph(_text(f"Answer: {question.answer}"), body))
         else:

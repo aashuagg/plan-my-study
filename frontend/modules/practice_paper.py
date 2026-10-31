@@ -20,14 +20,19 @@ def _pdf_downloads(paper_json):
 
 def show_practice_paper_page(db, user):
     st.title("📝 Practice Papers")
-    st.caption("Choose a saved topic and describe the practice you want. Generating a paper does not change review ratings.")
+    st.caption("Choose one or more topics from the same subject and describe the practice you want. Generating a paper does not change review ratings.")
     topics = get_practice_topics(db, user.id)
     if not topics:
         st.info("Add topics through Upload Newsletter or Add Diary Entry to create a practice paper.")
         return
 
     subject = st.selectbox("Subject", list(topics), key="paper_subject")
-    topic = st.selectbox("Topic", topics[subject], key=f"paper_topic_{subject}")
+    selected_topics = st.multiselect(
+        "Topics", topics[subject], default=topics[subject][:1],
+        max_selections=20, key=f"paper_topics_{subject}",
+    )
+    if not selected_topics:
+        st.info("Select at least one topic to generate a paper.")
     with st.form("practice_paper_form"):
         description = st.text_area(
             "Additional instructions (optional)", max_chars=3000,
@@ -35,19 +40,23 @@ def show_practice_paper_page(db, user):
         )
         col1, col2, col3 = st.columns(3)
         with col1:
-            question_count = st.number_input("Number of questions", min_value=1, max_value=20, value=10)
+            question_count = st.number_input(
+                "Total number of questions", min_value=max(1, len(selected_topics)),
+                max_value=20, value=max(10, len(selected_topics)),
+                help="Total for the whole paper, with at least one question per selected topic.",
+            )
         with col2:
             difficulty = st.selectbox("Difficulty", ["Easy", "Standard", "Challenging"], index=1)
         with col3:
             duration = st.number_input("Time (minutes)", min_value=5, max_value=90, value=30, step=5)
-        submitted = st.form_submit_button("Generate practice paper", type="primary")
+        submitted = st.form_submit_button("Generate practice paper", type="primary", disabled=not selected_topics)
 
     result_key = f"practice_paper_result_{user.id}"
     if submitted:
         try:
             with st.spinner("Creating your practice paper…"):
                 paper = generate_practice_paper(
-                    subject=subject, topic=topic, grade=user.grade, board=user.board,
+                    subject=subject, topics=selected_topics, grade=user.grade, board=user.board,
                     description=description, question_count=int(question_count),
                     difficulty=difficulty, duration_minutes=int(duration),
                 )
@@ -57,11 +66,13 @@ def show_practice_paper_page(db, user):
             st.error("Could not generate a valid practice paper. Please try again. If this continues, check the configured AI provider and connection.")
 
     saved = st.session_state.get(result_key)
-    if not saved or (saved["subject"], saved["topic"]) != (subject, topic):
+    if not saved:
         return
     paper = PracticePaper.model_validate(saved)
+    if paper.subject != subject or set(paper.topics) != set(selected_topics):
+        return
     st.divider()
-    st.caption("Last generated paper for this topic. Review the questions and answers before using it.")
+    st.caption("Last generated paper for these topics. Review the questions and answers before using it.")
     student_copy = paper_markdown(paper)
     answer_key = paper_markdown(paper, answers=True)
     st.markdown(student_copy)

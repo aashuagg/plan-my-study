@@ -34,6 +34,45 @@ def sample_paper():
 
 
 class PaperGenerationTests(unittest.TestCase):
+    def test_multiple_topics_are_sent_and_covered_in_exports(self):
+        topics = ["Naming words", "Action words"]
+        llm = Mock(invoke=Mock(return_value=model_response([
+            {"question": "Name a pet.", "answer": "Cat", "topic": topics[0]},
+            {"question": "What do birds do?", "answer": "Fly", "topic": topics[1]},
+        ])))
+        paper = generate_practice_paper(subject="ENGLISH", topics=topics, grade="Class 1",
+                                        board="CBSE", question_count=2, llm=llm)
+        request = json.loads(llm.invoke.call_args.args[0][1][1])
+        self.assertEqual(request["topics"], topics)
+        self.assertEqual(paper.topics, topics)
+        for answers in (False, True):
+            for topic in topics:
+                self.assertIn(topic, paper_markdown(paper, answers=answers))
+
+    def test_rejects_unknown_or_uncovered_topics(self):
+        for second_topic in ("Naming words", "Unselected topic", None):
+            llm = Mock(invoke=Mock(return_value=model_response([
+                {"question": "Name a pet.", "answer": "Cat", "topic": "Naming words"},
+                {"question": "Name a fruit.", "answer": "Apple", "topic": second_topic},
+            ])))
+            with self.subTest(second_topic=second_topic), self.assertRaises(ValueError):
+                generate_practice_paper(subject="ENGLISH", topics=["Naming words", "Action words"],
+                                        grade="Class 1", board="CBSE", question_count=2, llm=llm)
+
+    def test_rejects_empty_topics_and_insufficient_questions_before_llm_call(self):
+        for topics, count in (([], 2), (["Naming words", "Action words"], 1)):
+            llm = Mock()
+            with self.subTest(topics=topics), self.assertRaises(ValueError):
+                generate_practice_paper(subject="ENGLISH", topics=topics, grade="Class 1",
+                                        board="CBSE", question_count=count, llm=llm)
+            llm.invoke.assert_not_called()
+
+    def test_older_paper_session_is_readable(self):
+        from backend.practice_paper import PracticePaper
+        old = sample_paper().model_dump()
+        old["topic"] = old.pop("topics")[0]
+        self.assertEqual(PracticePaper.model_validate(old).topics, ["am, is, are"])
+
     def test_prompt_keeps_selection_and_literal_parent_instructions(self):
         llm = Mock(invoke=Mock(return_value=model_response()))
         paper = generate_practice_paper(
@@ -142,8 +181,28 @@ show_practice_paper_page(None, SimpleNamespace(id=1, grade='Class 1', board='CBS
             self.assertEqual(len(app.get("download_button")), 4)
             app.selectbox[0].select("HINDI").run()
             self.assertFalse(app.exception)
-            self.assertEqual(app.selectbox[1].value, "Words")
+            self.assertEqual(app.multiselect[0].value, ["Words"])
             self.assertEqual(len(app.get("download_button")), 0)
+
+    def test_select_multiple_topics_and_hide_result_when_selection_changes(self):
+        paper = sample_paper()
+        paper.topics = ["am, is, are", "Naming words"]
+        paper.questions[0].topic = paper.topics[0]
+        paper.questions[1].topic = paper.topics[1]
+        with patch("frontend.modules.practice_paper.get_practice_topics", return_value={
+            "ENGLISH": paper.topics, "HINDI": ["Words"],
+        }), patch("frontend.modules.practice_paper.generate_practice_paper", return_value=paper) as generate:
+            app = AppTest.from_string(self.SCRIPT).run()
+            app.multiselect[0].set_value(paper.topics).run()
+            app.button[0].click().run()
+            self.assertFalse(app.exception)
+            self.assertEqual(generate.call_args.kwargs["topics"], paper.topics)
+            self.assertEqual(len(app.get("download_button")), 4)
+            app.multiselect[0].set_value([paper.topics[0]]).run()
+            self.assertEqual(len(app.get("download_button")), 0)
+            app.multiselect[0].set_value([]).run()
+            self.assertTrue(app.button[0].disabled)
+            generate.assert_called_once()
 
     def test_empty_topics(self):
         with patch("frontend.modules.practice_paper.get_practice_topics", return_value={}):

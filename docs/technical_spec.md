@@ -227,9 +227,18 @@ and parses the response with `JsonOutputParser`, then validates it with Pydantic
 The request's grade and board come from the active student profile; the system
 prompt uses these fields to determine education level without a fixed age group.
 `PaperContent` contains a title, child instructions, and 1–20 `Question` objects with
-nonempty `question` and `answer` strings. Exact requested question count and duplicate
-question text are also checked. `PracticePaper` adds application-owned subject, topic,
+nonempty `question` and `answer` strings and an exact selected `topic` label. Exact
+requested total question count, duplicate question text, topic membership, and coverage
+of every selected topic are also checked. `PracticePaper` adds application-owned subject, topics,
 grade, difficulty, and duration metadata.
+
+The Topics multiselect is restricted to one subject's saved topics. At least one topic
+is required, and the total question count must be at least the number of selected
+topics (both capped at 20). `generate_practice_paper()` accepts a `topics` list; the
+legacy single `topic` argument and older session result format remain supported.
+Single-topic responses without a question topic label inherit that selected topic;
+multi-topic responses must supply all labels explicitly. Session preview matching
+compares subject and the complete topic set, independent of selection order.
 
 `paper_markdown()` exports the paper and answer key separately. `backend/paper_pdf.py`
 renders separate A4 PDFs in memory using ReportLab and HarfBuzz shaping, with bundled
