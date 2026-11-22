@@ -39,6 +39,12 @@ backend/scheduler.py
   LangChain chain: prompt | llm | JsonOutputParser
         │
         ▼
+  Correct unambiguous subject mismatches/prefixes from source candidates;
+  validate exact candidate subject/topic pairs, dates, topic cap,
+  one use per pair per week, and new/review flags
+        │  invalid → ask model to correct invalid entries (3 total attempts)
+        │  still invalid → show errors; do not save
+        ▼
   WeeklyPlanOutput (Pydantic)
     └── weekly_plan: List[DailyPlan]
     └── rationale: str
@@ -320,7 +326,7 @@ The `JsonOutputParser` (LangChain) appends format instructions to the prompt to 
 | **Inference speed** | Fast (local, no latency) | Slower (network API call) |
 | **Cost** | Free | Paid API |
 
-**Workaround for Ollama violations:** Validate `plan_data` after generation — count topics per day and alert the parent if any day exceeds 2 topics. This validation is not yet implemented in the MVP.
+**Validation:** `backend/plan_validation.py` checks the generated result before it is saved. It uses the same first 20 curriculum and first 30 due topics shown to the model. A topic assigned to the wrong subject is corrected automatically when its exact name has one unambiguous source match; a model-added subject prefix is removed only when the remaining topic also has one exact match. Other invalid results are returned for correction, up to three generation attempts including the first. Already valid days are retained. A result that still fails is not saved.
 
 ---
 
@@ -332,7 +338,7 @@ The `JsonOutputParser` (LangChain) appends format instructions to the prompt to 
 
 **Current workaround:** Sessions for unmatched topics are silently skipped with a UI message. The parent can note which topics were skipped.
 
-**Planned fix:** Fuzzy matching on topic lookup; or enforce exact topic names at plan generation time with a stricter prompt.
+**Current fix:** Exact subject/topic membership is checked against the supplied candidates before saving. An invented or paraphrased name triggers a correction attempt. If the model cannot correct it within three attempts, the plan is not saved.
 
 ---
 
@@ -342,7 +348,7 @@ The `JsonOutputParser` (LangChain) appends format instructions to the prompt to 
 
 **Current workaround:** Use Claude (production) for reliable plans. When using Ollama, the plan must be reviewed manually before acting on it.
 
-**Planned fix:** Post-generation validation that trims plans exceeding 2 topics per day and logs a warning.
+**Current fix:** Post-generation validation rejects days exceeding 2 topics and asks the model to correct the invalid entries. It never saves an overfull day.
 
 ---
 
@@ -381,9 +387,8 @@ name, so the existing "fuzzy match the topic" planned fix wouldn't have caught i
 `learning_history` for that exact topic string, and patch `weekly_plans.plan_data`
 directly for any mismatch found (both instances above were fixed this way).
 
-**Planned fix:** validate `plan_data` right after generation (the same validation gap
-Issue 2 already flagged for Ollama's topic-count violations) — for each day, check every
-topic's stated subject against a `(subject, topic) -> subject` lookup built from
-`learning_history` + `curriculum_items`, and either correct the subject automatically (a
-topic's true subject is unambiguous once ingested) or flag the day for the parent before
-saving. Not yet implemented.
+**Current fix:** `correct_unambiguous_topics()` first fixes a wrong subject from an exact,
+unique source match, including a model-added prefix such as `General Awareness: `.
+`validate_weekly_plan()` then checks every `(subject, topic)` pair against the exact
+curriculum and due sets included in the prompt. Remaining invalid pairings trigger
+correction attempts and are never saved if correction fails.

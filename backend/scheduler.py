@@ -45,7 +45,8 @@ class BaseScheduler:
         learning_history: List[Dict[str, Any]],
         week_start_date: date,
         focus_request: str = None,
-        events: str = None
+        events: str = None,
+        correction_instructions: str = ""
     ) -> Dict[str, Any]:
         """
         Generate a balanced weekly study plan using AI.
@@ -82,13 +83,15 @@ class BaseScheduler:
         
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
-            ("human", full_prompt + "\n\n{format_instructions}")
+            ("human", "{full_prompt}\n\n{format_instructions}\n\n{correction_instructions}")
         ])
         
         chain = prompt | self.llm | self.parser
         
         result = chain.invoke({
-            "format_instructions": self.parser.get_format_instructions()
+            "full_prompt": full_prompt,
+            "format_instructions": self.parser.get_format_instructions(),
+            "correction_instructions": correction_instructions,
         })
         
         return result
@@ -186,7 +189,7 @@ ONLY use subjects and topics from the curriculum data provided. DO NOT make up o
 2. DO NOT invent, create, or make up ANY subjects or topics
 3. Each day should total {user_profile["daily_duration_minutes"]} minutes
 4. Ensure ALL subjects appear at least 2 times during the week - no subject should appear only once
-5. Balance subject distribution: Hindi, Kannada, Literacy, Numeracy, General Awareness should each get 2-3 appearances
+5. Balance appearances among the subjects in the student profile when enough topics are available
 6. Review must be AT LEAST 20% of this week's topics — this is a floor, not a fixed split. If the
    "Topics Due for Review" list is much larger than "Current Curriculum," lean further into review;
    don't force in every new topic at the expense of a growing backlog
@@ -194,6 +197,7 @@ ONLY use subjects and topics from the curriculum data provided. DO NOT make up o
 8. The last day of the week follows the SAME rules as every other day.There is no "catch-up" day. If week ends with unscheduled topics, they move to next week.
 9. Provide a clear rationale explaining your scheduling decisions
 10. NEVER prefix a topic name with its subject name. The "topics" field must contain ONLY the topic text, NOT "SUBJECT: Topic". For example, write "Vyanjan (क - श)" NOT "HINDI: Vyanjan (क - श)".
+11. Use each exact subject/topic pair at most once during this week. Select a different candidate for every additional slot.
 
 SUBJECT-TOPIC MATCHING RULE:
 Each topic must belong to one of the subjects listed for that day.
